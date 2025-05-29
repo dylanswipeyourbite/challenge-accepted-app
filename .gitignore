@@ -1,0 +1,22 @@
+# Flutter/Dart specific
+*.iml
+*.lock
+.vscode/
+.idea/
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+ios/Pods/
+ios/Runner/GeneratedPluginRegistrant.*
+android/.gradle/
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
+# OS specific
+.DS_Store
+Thumbs.db
