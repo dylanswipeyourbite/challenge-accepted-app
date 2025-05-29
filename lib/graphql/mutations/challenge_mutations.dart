@@ -3,8 +3,12 @@ class ChallengeMutations {
   mutation AcceptChallenge(\$challengeId: ID!, \$restDays: Int!) {
     acceptChallenge(challengeId: \$challengeId, restDays: \$restDays) {
       id
-      userId
-      challengeId
+      user {
+        id
+        displayName
+      }
+      role
+      status
       restDays
       joinedAt
     }
