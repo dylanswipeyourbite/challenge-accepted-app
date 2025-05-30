@@ -1,5 +1,5 @@
-import 'package:challengeaccepted/change_password_page.dart';
-import 'package:challengeaccepted/edit_profile_page.dart';
+import 'package:challengeaccepted/pages/change_password_page.dart';
+import 'package:challengeaccepted/pages/edit_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
