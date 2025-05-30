@@ -1,5 +1,6 @@
 import 'package:challengeaccepted/challenge_detail_page.dart';
 import 'package:challengeaccepted/create_challenge.dart';
+import 'package:challengeaccepted/daily_activity_selector_page.dart'; // NEW
 import 'package:challengeaccepted/graphql/mutations/challenge_mutations.dart';
 import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
 import 'package:challengeaccepted/graphql/queries/media_queries.dart';
@@ -9,6 +10,7 @@ import 'package:challengeaccepted/widgets/post_card.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:challengeaccepted/graphql/queries/user_queries.dart';
 
 class HomeDashboardPage extends StatelessWidget {
   const HomeDashboardPage({super.key});
@@ -27,8 +29,11 @@ class HomeDashboardPage extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const SettingsPage()),
                 );
               },
-              child: const CircleAvatar(
-                backgroundImage: NetworkImage('https://example.com/user-avatar.jpg'),
+              child: CircleAvatar(
+                backgroundImage: NetworkImage(
+                  FirebaseAuth.instance.currentUser?.photoURL ?? 
+                  'https://i.pravatar.cc/150?u=${FirebaseAuth.instance.currentUser?.uid}',
+                ),
               ),
             ),
           ),
@@ -41,6 +46,8 @@ class HomeDashboardPage extends StatelessWidget {
           children: [
             const QuickStatsSection(),
             const SizedBox(height: 20),
+            const QuickActionsSection(),
+            const SizedBox(height: 20),
             const ActiveChallengesSection(),
             const SizedBox(height: 20),
             const PendingInvitesSection(),
@@ -49,15 +56,56 @@ class HomeDashboardPage extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CreateChallengePage()),
-          );
-        },
-        tooltip: 'Create Challenge',
-        child: const Icon(Icons.add),
-      ),
+    );
+  }
+}
+
+class QuickActionsSection extends StatelessWidget {
+  const QuickActionsSection({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DailyActivitySelectorPage()),
+              );
+            },
+            icon: const Icon(Icons.fitness_center),
+            label: const Text('Log Activity'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CreateChallengePage()),
+              );
+            },
+            icon: const Icon(Icons.emoji_events),
+            label: const Text('New Challenge'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              side: const BorderSide(color: Colors.blue, width: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -67,13 +115,78 @@ class QuickStatsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: const [
-        StatCard(label: "Streak", value: "5🔥"),
-        StatCard(label: "Completed", value: "12"),
-        StatCard(label: "PB", value: "5K in 23:42"),
-      ],
+    return Query(
+      options: QueryOptions(
+        document: gql(UserQueries.getUserStats),
+        fetchPolicy: FetchPolicy.cacheAndNetwork,
+      ),
+      builder: (result, {refetch, fetchMore}) {
+        if (result.isLoading && result.data == null) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: const [
+              StatCard(label: "Streak", value: "...", isLoading: true),
+              StatCard(label: "Points", value: "...", isLoading: true),
+              StatCard(label: "Next Goal", value: "...", isLoading: true),
+            ],
+          );
+        }
+
+        final stats = result.data?['userStats'];
+        if (stats == null) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: const [
+              StatCard(label: "Streak", value: "0🔥"),
+              StatCard(label: "Points", value: "0"),
+              StatCard(label: "Challenges", value: "0"),
+            ],
+          );
+        }
+
+        final currentStreak = stats['currentStreak'] ?? 0;
+        final totalPoints = stats['totalPoints'] ?? 0;
+        final completedChallenges = stats['completedChallenges'] ?? 0;
+
+        // Creative third stat: Show progress to next milestone
+        String thirdStatValue;
+        String thirdStatLabel;
+        
+        if (totalPoints < 100) {
+          thirdStatValue = "${100 - totalPoints} to 💯";
+          thirdStatLabel = "Next Milestone";
+        } else if (totalPoints < 500) {
+          thirdStatValue = "${500 - totalPoints} to 🏆";
+          thirdStatLabel = "Gold Trophy";
+        } else if (totalPoints < 1000) {
+          thirdStatValue = "${1000 - totalPoints} to 👑";
+          thirdStatLabel = "Champion";
+        } else {
+          thirdStatValue = "🌟 ${(totalPoints / 1000).toStringAsFixed(1)}K";
+          thirdStatLabel = "Legend Status";
+        }
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            StatCard(
+              label: "Streak", 
+              value: "$currentStreak${currentStreak > 0 ? '🔥' : ''}",
+              subtitle: currentStreak > 7 ? "On fire!" : null,
+            ),
+            StatCard(
+              label: "Points", 
+              value: totalPoints.toString(),
+              subtitle: completedChallenges > 0 ? "$completedChallenges won" : null,
+            ),
+            StatCard(
+              label: thirdStatLabel, 
+              value: thirdStatValue,
+              isSpecial: true,
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -81,21 +194,89 @@ class QuickStatsSection extends StatelessWidget {
 class StatCard extends StatelessWidget {
   final String label;
   final String value;
+  final String? subtitle;
+  final bool isLoading;
+  final bool isSpecial;
 
-  const StatCard({required this.label, required this.value, super.key});
+  const StatCard({
+    required this.label,
+    required this.value,
+    this.subtitle,
+    this.isLoading = false,
+    this.isSpecial = false,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.grey)),
-      ],
+    return Expanded(
+      child: Container(
+        height: 85, // Fixed height for all cards
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          gradient: isSpecial
+              ? LinearGradient(
+                  colors: [Colors.purple.shade300, Colors.blue.shade300],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isSpecial ? null : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            isLoading
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        value,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: isSpecial ? Colors.white : Colors.black,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ),
+                  ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSpecial ? Colors.white.withOpacity(0.9) : Colors.grey,
+                fontSize: 11,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle!,
+                style: TextStyle(
+                  color: isSpecial ? Colors.white.withOpacity(0.8) : Colors.green,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
-
 class ActiveChallengesSection extends StatelessWidget {
   const ActiveChallengesSection({super.key});
 

@@ -1,11 +1,401 @@
-// Updated IntegratedDailyLogPage in lib/widgets/daily_log_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:typed_data';
+import 'package:firebase_auth/firebase_auth.dart';
 
+
+class DailyActivitySelectorPage extends StatefulWidget {
+  const DailyActivitySelectorPage({super.key});
+
+  @override
+  State<DailyActivitySelectorPage> createState() => _DailyActivitySelectorPageState();
+}
+
+class _DailyActivitySelectorPageState extends State<DailyActivitySelectorPage> {
+  final Set<String> selectedChallengeIds = {};
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Select Challenges'),
+        actions: [
+          TextButton(
+            onPressed: selectedChallengeIds.isEmpty ? null : () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => MultiChallengeDailyLogPage(
+                    challengeIds: selectedChallengeIds.toList(),
+                  ),
+                ),
+              );
+            },
+            child: Text(
+              'Next (${selectedChallengeIds.length})',
+              style: TextStyle(
+                color: selectedChallengeIds.isEmpty ? Colors.grey : Colors.blue,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Query(
+        options: QueryOptions(
+          document: gql(ChallengesQueries.getActiveChallenges),
+          fetchPolicy: FetchPolicy.cacheAndNetwork,
+        ),
+        builder: (result, {refetch, fetchMore}) {
+          if (result.isLoading && result.data == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (result.hasException) {
+            return Center(child: Text('Error: ${result.exception.toString()}'));
+          }
+
+          final currentUser = FirebaseAuth.instance.currentUser;
+          if (currentUser == null) {
+            return const Center(
+              child: Text('Not authenticated'),
+            );
+          }
+
+          final challenges = result.data?['challenges'] as List<dynamic>? ?? [];
+          
+          // Filter to show only active challenges where user has accepted
+          final activeChallenges = challenges.where((challenge) {
+            if (challenge['status'] == 'expired') return false;
+            
+            final participants = challenge['participants'] as List<dynamic>?;
+            if (participants == null) return false;
+            
+            // Find if the current user is an accepted participant
+            try {
+              participants.firstWhere(
+                (p) => p['user'] != null && p['status'] == 'accepted',
+              );
+              return true;
+            } catch (_) {
+              return false;
+            }
+          }).toList();
+
+          if (activeChallenges.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.info_outline, size: 64, color: Colors.grey.shade400),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No active challenges',
+                    style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Join a challenge first to log activities',
+                    style: TextStyle(color: Colors.grey.shade500),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Go Back'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                color: Colors.blue.shade50,
+                child: Row(
+                  children: [
+                    Icon(Icons.info, color: Colors.blue.shade700),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Select the challenges you want to log activity for',
+                        style: TextStyle(color: Colors.blue.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: activeChallenges.length,
+                  itemBuilder: (context, index) {
+                    final challenge = activeChallenges[index];
+                    final challengeId = challenge['id'] as String;
+                    final isSelected = selectedChallengeIds.contains(challengeId);
+                    
+                    // Get participant info for this challenge
+                    final participants = challenge['participants'] as List<dynamic>;
+                    
+                    // Use try-catch instead of orElse for finding participant
+                    Map<String, dynamic>? userParticipant;
+                    try {
+                      userParticipant = participants.firstWhere(
+                        (p) => p['user'] != null && p['status'] == 'accepted',
+                      ) as Map<String, dynamic>;
+                    } catch (_) {
+                      return const SizedBox.shrink();
+                    }
+                    
+                    final streak = userParticipant['dailyStreak'] as int? ?? 0;
+                    final totalPoints = userParticipant['totalPoints'] as int? ?? 0;
+                    
+                    return Card(
+                      elevation: isSelected ? 4 : 1,
+                      color: isSelected ? Colors.green.shade50 : null,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: InkWell(
+                        onTap: () {
+                          setState(() {
+                            if (isSelected) {
+                              selectedChallengeIds.remove(challengeId);
+                            } else {
+                              selectedChallengeIds.add(challengeId);
+                            }
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isSelected ? Colors.green : Colors.grey,
+                                    width: 2,
+                                  ),
+                                  color: isSelected ? Colors.green : Colors.transparent,
+                                ),
+                                child: isSelected
+                                    ? const Icon(
+                                        Icons.check,
+                                        size: 16,
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      challenge['title'] as String,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.local_fire_department,
+                                          size: 16,
+                                          color: Colors.orange.shade600,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '$streak day streak',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Icon(
+                                          Icons.star,
+                                          size: 16,
+                                          color: Colors.amber.shade600,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '$totalPoints points',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                challenge['type'] == 'competitive'
+                                    ? Icons.emoji_events
+                                    : Icons.group,
+                                color: Colors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// Multi-challenge daily log page
+class MultiChallengeDailyLogPage extends StatefulWidget {
+  final List<String> challengeIds;
+
+  const MultiChallengeDailyLogPage({
+    super.key,
+    required this.challengeIds,
+  });
+
+  @override
+  State<MultiChallengeDailyLogPage> createState() => _MultiChallengeDailyLogPageState();
+}
+
+class _MultiChallengeDailyLogPageState extends State<MultiChallengeDailyLogPage> {
+  int currentChallengeIndex = 0;
+  final Map<String, bool> completedChallenges = {};
+
+  void _onChallengeLogged(String challengeId) {
+    setState(() {
+      completedChallenges[challengeId] = true;
+      
+      if (currentChallengeIndex < widget.challengeIds.length - 1) {
+        currentChallengeIndex++;
+      } else {
+        _showCompletionDialog();
+      }
+    });
+  }
+
+  void _showCompletionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('All Done! 🎉'),
+        content: Text(
+          'You\'ve logged activity for ${widget.challengeIds.length} challenge${widget.challengeIds.length > 1 ? 's' : ''}!',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+            child: const Text('Back to Home'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.challengeIds.isEmpty) {
+      return const Scaffold(
+        body: Center(child: Text('No challenges selected')),
+      );
+    }
+
+    final currentChallengeId = widget.challengeIds[currentChallengeIndex];
+
+    return Query(
+      options: QueryOptions(
+        document: gql(ChallengesQueries.getChallenge),
+        variables: {'id': currentChallengeId},
+        fetchPolicy: FetchPolicy.cacheAndNetwork,
+      ),
+      builder: (result, {refetch, fetchMore}) {
+        if (result.isLoading && result.data == null) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (result.hasException) {
+          return Scaffold(
+            body: Center(child: Text('Error: ${result.exception.toString()}')),
+          );
+        }
+
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser == null) {
+          return const Scaffold(
+            body: Center(child: Text('Not authenticated')),
+          );
+        }
+
+        final challengeData = result.data?['challenge'] as Map<String, dynamic>?;
+        if (challengeData == null) {
+          return const Scaffold(
+            body: Center(child: Text('Challenge not found')),
+          );
+        }
+
+        final participants = challengeData['participants'] as List<dynamic>;
+        
+        // Find user participant with proper null safety
+        Map<String, dynamic>? userParticipant;
+        try {
+          userParticipant = participants.firstWhere(
+            (p) => p['user'] != null && p['status'] == 'accepted',
+          ) as Map<String, dynamic>;
+        } catch (_) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('You are not an accepted participant in this challenge'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Go Back'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return IntegratedDailyLogPage(
+          challengeId: currentChallengeId,
+          challengeTitle: challengeData['title'] as String,
+          allowedRestDays: userParticipant['restDays'] as int? ?? 1,
+          usedRestDays: userParticipant['weeklyRestDaysUsed'] as int? ?? 0,
+          currentStreak: userParticipant['dailyStreak'] as int? ?? 0,
+          isMultiChallenge: widget.challengeIds.length > 1,
+          challengeProgress: '${currentChallengeIndex + 1} of ${widget.challengeIds.length}',
+          onComplete: () => _onChallengeLogged(currentChallengeId),
+        );
+      },
+    );
+  }
+}
+
+// IntegratedDailyLogPage implementation
 class IntegratedDailyLogPage extends StatefulWidget {
   final String challengeId;
   final String challengeTitle;
