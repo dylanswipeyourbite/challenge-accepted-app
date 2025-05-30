@@ -1,7 +1,7 @@
 // lib/widgets/lists/challenge_media_list.dart
 
 import 'package:flutter/material.dart';
-import 'package:challengeaccepted/widgets/post_card.dart';
+import 'package:challengeaccepted/widgets/cards/post_card.dart';
 
 class ChallengeMediaList extends StatelessWidget {
   final List<dynamic> mediaList;

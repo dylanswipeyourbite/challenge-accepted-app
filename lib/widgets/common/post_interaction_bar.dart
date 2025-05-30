@@ -1,5 +1,5 @@
-import 'package:challengeaccepted/widgets/comment_button.dart';
-import 'package:challengeaccepted/widgets/cheer_button.dart';
+import 'package:challengeaccepted/widgets/buttons/comment_button.dart';
+import 'package:challengeaccepted/widgets/buttons/cheer_button.dart';
 import 'package:flutter/material.dart';
 
 class PostInteractionBar extends StatelessWidget {

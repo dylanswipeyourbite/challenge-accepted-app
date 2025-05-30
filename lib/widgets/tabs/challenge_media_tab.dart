@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/media_queries.dart';
 import 'package:challengeaccepted/widgets/lists/challenge_media_list.dart';
-import 'package:challengeaccepted/widgets/buttons/upload_media_button.dart';
 import 'package:challengeaccepted/widgets/common/loading_indicator.dart';
 import 'package:challengeaccepted/widgets/common/error_message.dart';
 import 'package:challengeaccepted/widgets/common/empty_state.dart';
@@ -61,12 +60,6 @@ class ChallengeMediaTab extends StatelessWidget {
                       mediaList: mediaList,
                       onRefetch: refetch,
                     ),
-                  const SizedBox(height: 20),
-                  UploadMediaButton(
-                    challengeId: challengeId,
-                    challengeTitle: challengeTitle,
-                    onUploadComplete: refetch,
-                  ),
                 ],
               ),
             ),

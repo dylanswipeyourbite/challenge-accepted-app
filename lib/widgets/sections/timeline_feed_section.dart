@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/media_queries.dart';
-import 'package:challengeaccepted/widgets/post_card.dart';
+import 'package:challengeaccepted/widgets/cards/post_card.dart';
 
 class TimelineFeedSection extends StatelessWidget {
   const TimelineFeedSection({super.key});

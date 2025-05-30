@@ -1,4 +1,4 @@
-import 'package:challengeaccepted/widgets/comment_section.dart';
+import 'package:challengeaccepted/widgets/common/comment_section.dart';
 import 'package:flutter/material.dart';
 
 class CommentButton extends StatelessWidget {

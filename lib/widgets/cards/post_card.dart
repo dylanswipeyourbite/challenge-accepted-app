@@ -1,4 +1,4 @@
-import 'package:challengeaccepted/widgets/post_interaction_bar.dart';
+import 'package:challengeaccepted/widgets/common/post_interaction_bar.dart';
 import 'package:flutter/material.dart';
 
 class PostCard extends StatelessWidget {
