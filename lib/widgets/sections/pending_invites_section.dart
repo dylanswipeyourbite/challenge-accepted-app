@@ -1,5 +1,6 @@
 // lib/widgets/sections/pending_invites_section.dart
 
+import 'package:challengeaccepted/utils/graphql_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
@@ -188,39 +189,44 @@ class _PendingChallengeCard extends StatelessWidget {
   }
 
   Future<void> _acceptChallenge(
-    BuildContext context,
-    GraphQLClient client,
-    int restDays,
-  ) async {
-    final result = await client.mutate(
-      MutationOptions(
-        document: gql(ChallengeMutations.acceptChallenge),
-        variables: {
-          'challengeId': challenge['id'],
-          'restDays': restDays,
-        },
+  BuildContext context,
+  GraphQLClient client,
+  int restDays,
+) async {
+  final result = await client.mutate(
+    MutationOptions(
+      document: gql(ChallengeMutations.acceptChallenge),
+      variables: {
+        'challengeId': challenge['id'],
+        'restDays': restDays,
+      },
+    ),
+  );
+
+  if (!context.mounted) return;
+
+  if (result.hasException) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('❌ Error: ${result.exception?.graphqlErrors.first.message}'),
+        backgroundColor: Colors.red,
       ),
     );
-
-    if (!context.mounted) return;
-
-    if (result.hasException) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error: ${result.exception?.graphqlErrors.first.message}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Challenge accepted! Good luck! 🔥'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      onRefetch?.call();
-    }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('✅ Challenge accepted! Good luck! 🔥'),
+        backgroundColor: Colors.green,
+      ),
+    );
+    
+    // Refresh relevant queries
+    await GraphQLHelpers.refetchAfterChallengeUpdate(client);
+    
+    // Call the original refetch if available
+    onRefetch?.call();
   }
+}
 
   Future<void> _declineChallenge(
     BuildContext context,

@@ -69,7 +69,7 @@ class QuickActionsSection extends StatelessWidget {
   Map<String, dynamic>? _findAcceptedParticipant(List<dynamic> participants) {
     try {
       return participants.firstWhere(
-        (p) => p['status'] == 'accepted',
+        (p) => p['isCurrentUser'] == true && p['status'] == 'accepted',
       ) as Map<String, dynamic>;
     } catch (_) {
       return null;

@@ -137,10 +137,13 @@ class _DailyActivitySelectorPageState extends State<DailyActivitySelectorPage> {
       if (participants == null) return false;
       
       try {
-        participants.firstWhere(
-          (p) => p['user'] != null && p['status'] == 'accepted',
+        // Find the current user's participant record
+        final currentUserParticipant = participants.firstWhere(
+          (p) => p['isCurrentUser'] == true,
         );
-        return true;
+        
+        // Check if the current user has accepted
+        return currentUserParticipant['status'] == 'accepted';
       } catch (_) {
         return false;
       }

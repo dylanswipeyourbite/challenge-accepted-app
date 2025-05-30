@@ -1,8 +1,8 @@
 // lib/widgets/sections/active_challenges_section.dart
 
+import 'package:challengeaccepted/utils/graphql_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
 import 'package:challengeaccepted/graphql/subscriptions/challenge_subscriptions.dart';
 import 'package:challengeaccepted/widgets/cards/active_challenge_card.dart';
@@ -23,7 +23,7 @@ class ActiveChallengesSection extends StatelessWidget {
         Query(
           options: QueryOptions(
             document: gql(ChallengesQueries.getActiveChallenges),
-            fetchPolicy: FetchPolicy.cacheAndNetwork,
+            fetchPolicy: GraphQLHelpers.getFetchPolicyFor(QueryType.activeStats),
           ),
           builder: (result, {fetchMore, refetch}) {
             if (result.isLoading && result.data == null) {
@@ -32,11 +32,6 @@ class ActiveChallengesSection extends StatelessWidget {
 
             if (result.hasException) {
               return Text('Error: ${result.exception.toString()}');
-            }
-            
-            final currentUser = FirebaseAuth.instance.currentUser;
-            if (currentUser == null) {
-              return const Text("Not authenticated");
             }
             
             final challenges = result.data?['challenges'] as List<dynamic>? ?? [];
@@ -64,10 +59,13 @@ class ActiveChallengesSection extends StatelessWidget {
       if (participants == null) return false;
       
       try {
-        participants.firstWhere(
-          (p) => p['user'] != null && p['status'] == 'accepted',
+        // Find the current user's participant record
+        final currentUserParticipant = participants.firstWhere(
+          (p) => p['isCurrentUser'] == true,
         );
-        return true;
+        
+        // Check if the current user has accepted
+        return currentUserParticipant['status'] == 'accepted';
       } catch (_) {
         return false;
       }

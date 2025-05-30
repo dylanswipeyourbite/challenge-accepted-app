@@ -120,12 +120,12 @@ class _MultiChallengeDailyLogPageState extends State<MultiChallengeDailyLogPage>
     );
   }
 
-  Map<String, dynamic>? _findUserParticipant(Map<String, dynamic> challengeData) {
-    final participants = challengeData['participants'] as List<dynamic>;
+  Map<String, dynamic>? _findUserParticipant(Map<String, dynamic> challenge) {
+    final participants = challenge['participants'] as List<dynamic>;
     
     try {
       return participants.firstWhere(
-        (p) => p['user'] != null && p['status'] == 'accepted',
+        (p) => p['isCurrentUser'] == true && p['status'] == 'accepted',
       ) as Map<String, dynamic>;
     } catch (_) {
       return null;

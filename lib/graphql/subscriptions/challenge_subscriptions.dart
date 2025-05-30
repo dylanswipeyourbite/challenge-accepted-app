@@ -15,6 +15,7 @@ class ChallengeSubscriptions {
           displayName
           avatarUrl
         }
+        isCurrentUser
         role
         progress
         status

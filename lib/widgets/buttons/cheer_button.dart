@@ -1,6 +1,7 @@
-import 'package:challengeaccepted/graphql/mutations/media_mutations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:challengeaccepted/graphql/mutations/media_mutations.dart';
 
 class CheerButton extends StatefulWidget {
   final String mediaId;
@@ -13,7 +14,7 @@ class CheerButton extends StatefulWidget {
     required this.mediaId,
     required this.cheers,
     required this.hasCheered,
-    required this.onRefetch
+    required this.onRefetch,
   });
 
   @override
@@ -21,63 +22,112 @@ class CheerButton extends StatefulWidget {
 }
 
 class _CheerButtonState extends State<CheerButton> with SingleTickerProviderStateMixin {
-  double _iconScale = 1.0;
-  bool? optimisticCheer;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  bool? _optimisticCheer;
 
-  void animate() {
-    setState(() => _iconScale = 1.4);
-    Future.delayed(const Duration(milliseconds: 150), () {
-      if (mounted) setState(() => _iconScale = 1.0);
-    });
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.3,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
   }
 
-  void toggleCheer(RunMutation runMutation) {
-    final optimistic = !(optimisticCheer ?? widget.hasCheered);
-    runMutation({'mediaId': widget.mediaId});
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
+  void _toggleCheer(RunMutation runMutation) {
+    final willCheer = !(_optimisticCheer ?? widget.hasCheered);
+    
+    // Optimistic update
     setState(() {
-      optimisticCheer = optimistic;
+      _optimisticCheer = willCheer;
     });
-
-    animate();
+    
+    // Animation
+    _animationController.forward().then((_) {
+      _animationController.reverse();
+    });
+    
+    // Haptic feedback
+    HapticFeedback.lightImpact();
+    
+    runMutation({'mediaId': widget.mediaId});
   }
 
   @override
   Widget build(BuildContext context) {
-    final effectiveHasCheered = optimisticCheer ?? widget.hasCheered;
-    final cheerCount = widget.cheers.length + (optimisticCheer == null
-        ? 0
-        : (optimisticCheer! ? 1 : -1) * (widget.hasCheered ? 0 : 1));
+    final effectiveHasCheered = _optimisticCheer ?? widget.hasCheered;
+    final effectiveCheers = widget.cheers.length + 
+      ((_optimisticCheer != null && _optimisticCheer != widget.hasCheered) 
+        ? (_optimisticCheer! ? 1 : -1) 
+        : 0);
 
     return Mutation(
       options: MutationOptions(
         document: gql(effectiveHasCheered
             ? MediaMutations.uncheerPostMutation
             : MediaMutations.cheerPostMutation),
-        onCompleted: (_) async {
-          setState(() => optimisticCheer = null);
-          widget.onRefetch?.call(); 
+        onCompleted: (_) {
+          // Reset optimistic state after success
+          setState(() => _optimisticCheer = null);
+          // Optionally refresh the parent
+          widget.onRefetch?.call();
+        },
+        onError: (error) {
+          // Rollback optimistic update
+          setState(() => _optimisticCheer = null);
+          
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Could not update cheer'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
         },
       ),
       builder: (runMutation, result) {
         return GestureDetector(
-          onTap: () => toggleCheer(runMutation),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedScale(
-                scale: _iconScale,
-                duration: const Duration(milliseconds: 150),
-                child: Icon(
-                  effectiveHasCheered
-                      ? Icons.emoji_emotions
-                      : Icons.emoji_emotions_outlined,
-                  color: effectiveHasCheered ? Colors.orange : Colors.grey,
-                ),
+          onTap: result?.isLoading ?? false ? null : () => _toggleCheer(runMutation),
+          child: AnimatedBuilder(
+            animation: _scaleAnimation,
+            builder: (context, child) => Transform.scale(
+              scale: _scaleAnimation.value,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    effectiveHasCheered
+                        ? Icons.emoji_emotions
+                        : Icons.emoji_emotions_outlined,
+                    color: effectiveHasCheered ? Colors.orange : Colors.grey,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$effectiveCheers Cheer${effectiveCheers == 1 ? '' : 's'}',
+                    style: TextStyle(
+                      color: effectiveHasCheered ? Colors.orange : Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              Text('$cheerCount Cheer${cheerCount == 1 ? '' : 's'}'),
-            ],
+            ),
           ),
         );
       },

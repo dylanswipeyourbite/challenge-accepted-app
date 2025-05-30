@@ -46,7 +46,7 @@ class ChallengeSelectionList extends StatelessWidget {
     
     try {
       return participants.firstWhere(
-        (p) => p['user'] != null && p['status'] == 'accepted',
+        (p) => p['isCurrentUser'] == true && p['status'] == 'accepted',
       ) as Map<String, dynamic>;
     } catch (_) {
       return null;

@@ -13,6 +13,8 @@ class ChallengesQueries {
           role
           progress
           dailyStreak
+          status
+          isCurrentUser
           user {
             displayName
             avatarUrl
@@ -34,6 +36,7 @@ class ChallengesQueries {
         wager
         status
         participants {
+          isCurrentUser
           user {
             id
             displayName
@@ -63,6 +66,7 @@ class ChallengesQueries {
           avatarUrl
         }
         participants {
+          isCurrentUser
           user {
             id
             displayName
@@ -98,6 +102,7 @@ class ChallengesQueries {
             displayName
             avatarUrl
           }
+          isCurrentUser
           role
           status
         }
@@ -112,6 +117,7 @@ class ChallengesQueries {
         title
         participants {
           role
+          isCurrentUser
           media {
             url
             type
