@@ -47,18 +47,57 @@ class ChallengesQueries {
     }
   """;
 
+  static const String getActiveChallenges = """
+    query GetActiveChallenges {
+      challenges {
+        id
+        title
+        sport
+        type
+        timeLimit
+        wager
+        status
+        createdBy {
+          id
+          displayName
+          avatarUrl
+        }
+        participants {
+          user {
+            id
+            displayName
+            avatarUrl
+          }
+          role
+          progress
+          status
+          dailyStreak
+          totalPoints
+        }
+      }
+    }
+  """;
+
   static const String pendingChallenges = """
     query PendingChallenges {
       pendingChallenges {
         id
         title
-          createdBy {
+        sport
+        type
+        timeLimit
+        wager
+        createdBy {
+          id
+          displayName
+          avatarUrl
+        }
+        participants {
+          user {
             id
             displayName
             avatarUrl
           }
-        timeLimit
-        participants {
           role
           status
         }
