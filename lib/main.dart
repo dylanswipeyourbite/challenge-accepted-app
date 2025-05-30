@@ -9,10 +9,6 @@ import 'graphql_client.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-//   await FirebaseAuth.instance.signInWithEmailAndPassword(
-//   email: 'd.t.janssens@gmail.com',
-//   password: '123456',
-// );
   await initHiveForFlutter();
   final graphQLClient = await createClient();
 
@@ -43,6 +39,7 @@ class MyApp extends StatelessWidget {
 
             if (snapshot.hasData) {
               return const HomeDashboardPage(); // ✅ Authenticated
+              // return const FirebaseTokenDebug(); // ✅ Authenticated
             } else {
               return const LoginPage(); // 🔒 Not logged in
             }

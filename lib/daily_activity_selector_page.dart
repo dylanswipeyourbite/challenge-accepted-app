@@ -6,7 +6,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 
-
 class DailyActivitySelectorPage extends StatefulWidget {
   const DailyActivitySelectorPage({super.key});
 
