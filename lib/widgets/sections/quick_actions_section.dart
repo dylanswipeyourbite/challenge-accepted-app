@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
 import 'package:challengeaccepted/pages/daily_activity_selector_page.dart';
-import 'package:challengeaccepted/create_challenge.dart';
+import 'package:challengeaccepted/pages/create_challenge_page.dart';
 
 class QuickActionsSection extends StatelessWidget {
   const QuickActionsSection({super.key});
