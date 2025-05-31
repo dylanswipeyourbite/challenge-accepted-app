@@ -110,6 +110,62 @@ class ChallengesQueries {
     }
   """;
 
+  static const String getChallengeDetails = """
+    query GetChallengeDetails(\$id: ID!) {
+      challenge(id: \$id) {
+        id
+        title
+        sport
+        type
+        startDate
+        timeLimit
+        wager
+        status
+        challengeStreak
+        lastCompleteLogDate
+        createdBy {
+          id
+          displayName
+          avatarUrl
+        }
+        participants {
+          id
+          user {
+            id
+            displayName
+            avatarUrl
+          }
+          role
+          progress
+          status
+          dailyStreak
+          totalPoints
+          isCurrentUser
+          restDays
+          weeklyRestDaysUsed
+        }
+        todayStatus {
+          allParticipantsLogged
+          participantsLoggedCount
+          totalParticipants
+          participantsStatus {
+            participant {
+              id
+              user {
+                id
+                displayName
+                avatarUrl
+              }
+              isCurrentUser
+            }
+            hasLoggedToday
+            lastLogTime
+          }
+        }
+      }
+    }
+  """;
+
   static const String getTimeline = """
     query TimelineFeed {
       challenges {

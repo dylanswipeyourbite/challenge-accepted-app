@@ -1,5 +1,6 @@
 // lib/widgets/cards/active_challenge_card.dart
 
+import 'package:challengeaccepted/pages/challenge_detail_pagev2.dart';
 import 'package:flutter/material.dart';
 import 'package:challengeaccepted/pages/challenge_detail_page.dart';
 
@@ -46,7 +47,7 @@ class ActiveChallengeCard extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ChallengeDetailPage(challenge: challenge),
+        builder: (_) => ChallengeDetailPageV2(challenge: challenge),
       ),
     );
   }
