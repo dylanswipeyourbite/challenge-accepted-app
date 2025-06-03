@@ -2,14 +2,17 @@
 
 import 'package:challengeaccepted/pages/challenge_detail_pagev2.dart';
 import 'package:flutter/material.dart';
-import 'package:challengeaccepted/pages/challenge_detail_page.dart';
+import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
 
 class ActiveChallengeCard extends StatelessWidget {
   final Map<String, dynamic> challenge;
+  final bool needsLogging;
 
   const ActiveChallengeCard({
     super.key,
     required this.challenge,
+    required this.needsLogging,
   });
 
   @override
@@ -22,21 +25,34 @@ class ActiveChallengeCard extends StatelessWidget {
     
     return InkWell(
       onTap: () => _navigateToDetail(context),
-      child: Card(
+      child: Container(
         margin: const EdgeInsets.only(right: 12),
-        elevation: 3,
-        child: Container(
-          width: 220,
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(challengeStatus),
-              const SizedBox(height: 6),
-              _buildTitle(),
-              const Spacer(),
-              _buildFooter(acceptedCount, daysRemaining),
-            ],
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: needsLogging 
+              ? Border.all(color: Colors.orange, width: 3)
+              : null,
+        ),
+        child: Card(
+          margin: EdgeInsets.zero,
+          elevation: needsLogging ? 5 : 3,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Container(
+            width: 220,
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(challengeStatus),
+                const SizedBox(height: 6),
+                _buildTitle(),
+                if (needsLogging) _buildNeedsLoggingIndicator(),
+                const Spacer(),
+                _buildFooter(acceptedCount, daysRemaining),
+              ],
+            ),
           ),
         ),
       ),
@@ -49,7 +65,14 @@ class ActiveChallengeCard extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => ChallengeDetailPageV2(challenge: challenge),
       ),
-    );
+    ).then((_) {
+      // Refresh queries when returning from detail page
+      final client = GraphQLProvider.of(context).value;
+      client.query(QueryOptions(
+        document: gql(ChallengesQueries.getActiveChallenges),
+        fetchPolicy: FetchPolicy.networkOnly,
+      ));
+    });
   }
 
   Widget _buildHeader(_ChallengeStatus status) {
@@ -59,13 +82,15 @@ class ActiveChallengeCard extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: status.color.withOpacity(0.2),
+              color: needsLogging 
+                  ? Colors.orange.withOpacity(0.2)
+                  : status.color.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              status.text,
+              needsLogging ? 'LOG TODAY' : status.text,
               style: TextStyle(
-                color: status.color,
+                color: needsLogging ? Colors.orange : status.color,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
@@ -94,6 +119,30 @@ class ActiveChallengeCard extends StatelessWidget {
         ),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  Widget _buildNeedsLoggingIndicator() {
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            size: 14,
+            color: Colors.orange.shade700,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Activity needed',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.orange.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

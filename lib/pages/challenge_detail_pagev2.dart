@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
 import 'package:challengeaccepted/graphql/queries/media_queries.dart';
 import 'package:challengeaccepted/widgets/cards/post_card.dart';
 import 'package:challengeaccepted/utils/graphql_helpers.dart';
 import 'package:challengeaccepted/pages/daily_log_page.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class ChallengeDetailPageV2 extends StatelessWidget {
   final Map<String, dynamic> challenge;
@@ -96,7 +94,7 @@ class _ChallengeDetailContentState extends State<_ChallengeDetailContent> {
   Widget build(BuildContext context) {
     final todayStatus = widget.challenge['todayStatus'] as Map<String, dynamic>?;
     final challengeStreak = widget.challenge['challengeStreak'] as int? ?? 0;
-    final currentUserParticipant = _findCurrentUserParticipant();
+    // final currentUserParticipant = _findCurrentUserParticipant();
     final hasLoggedToday = _hasCurrentUserLoggedToday();
 
     return Scaffold(

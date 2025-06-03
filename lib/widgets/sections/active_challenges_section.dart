@@ -1,14 +1,20 @@
-// lib/widgets/sections/active_challenges_section.dart
-
-import 'package:challengeaccepted/utils/graphql_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
 import 'package:challengeaccepted/graphql/subscriptions/challenge_subscriptions.dart';
 import 'package:challengeaccepted/widgets/cards/active_challenge_card.dart';
+import 'package:challengeaccepted/pages/challenge_detail_pagev2.dart';
 
-class ActiveChallengesSection extends StatelessWidget {
+class ActiveChallengesSection extends StatefulWidget {
   const ActiveChallengesSection({super.key});
+
+  @override
+  State<ActiveChallengesSection> createState() => _ActiveChallengesSectionState();
+}
+
+class _ActiveChallengesSectionState extends State<ActiveChallengesSection> {
+  // Key to force rebuild of Query widget
+  Key _queryKey = UniqueKey();
 
   @override
   Widget build(BuildContext context) {
@@ -21,9 +27,10 @@ class ActiveChallengesSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Query(
+          key: _queryKey,
           options: QueryOptions(
             document: gql(ChallengesQueries.getActiveChallenges),
-            fetchPolicy: GraphQLHelpers.getFetchPolicyFor(QueryType.activeStats),
+            fetchPolicy: FetchPolicy.cacheAndNetwork,
           ),
           builder: (result, {fetchMore, refetch}) {
             if (result.isLoading && result.data == null) {
@@ -35,15 +42,17 @@ class ActiveChallengesSection extends StatelessWidget {
             }
             
             final challenges = result.data?['challenges'] as List<dynamic>? ?? [];
-            final activeChallenges = _filterActiveChallenges(challenges);
+            final processedChallenges = _processAndSortChallenges(challenges);
 
-            if (activeChallenges.isEmpty) {
+            if (processedChallenges.isEmpty) {
               return const _EmptyChallengesMessage();
             }
 
             return _ChallengesList(
               challenges: challenges,
-              activeChallenges: activeChallenges,
+              processedChallenges: processedChallenges,
+              onRefresh: refetch,
+              onNavigateToChallenge: (challenge) => _navigateToChallenge(context, challenge, refetch),
             );
           },
         ),
@@ -51,12 +60,41 @@ class ActiveChallengesSection extends StatelessWidget {
     );
   }
 
-  List<dynamic> _filterActiveChallenges(List<dynamic> challenges) {
-    return challenges.where((challenge) {
-      if (challenge['status'] == 'expired') return false;
+  Future<void> _navigateToChallenge(
+    BuildContext context, 
+    Map<String, dynamic> challenge,
+    VoidCallback? refetch,
+  ) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChallengeDetailPageV2(challenge: challenge),
+      ),
+    );
+    
+    // Force refresh when returning
+    if (mounted) {
+      setState(() {
+        _queryKey = UniqueKey();
+      });
+      
+      // Also ensure GraphQL cache is refreshed
+      final client = GraphQLProvider.of(context).value;
+      await client.query(QueryOptions(
+        document: gql(ChallengesQueries.getActiveChallenges),
+        fetchPolicy: FetchPolicy.networkOnly,
+      ));
+    }
+  }
+
+  List<Map<String, dynamic>> _processAndSortChallenges(List<dynamic> challenges) {
+    final List<Map<String, dynamic>> processedList = [];
+    
+    for (final challenge in challenges) {
+      if (challenge['status'] == 'expired') continue;
       
       final participants = challenge['participants'] as List<dynamic>?;
-      if (participants == null) return false;
+      if (participants == null) continue;
       
       try {
         // Find the current user's participant record
@@ -65,11 +103,40 @@ class ActiveChallengesSection extends StatelessWidget {
         );
         
         // Check if the current user has accepted
-        return currentUserParticipant['status'] == 'accepted';
+        if (currentUserParticipant['status'] != 'accepted') continue;
+        
+        // Check if user has logged today
+        final hasLoggedToday = _hasLoggedToday(currentUserParticipant['lastLogDate']);
+        
+        processedList.add({
+          'challenge': challenge,
+          'needsLogging': !hasLoggedToday,
+        });
       } catch (_) {
-        return false;
+        continue;
       }
-    }).toList();
+    }
+    
+    // Sort: challenges needing logging first
+    processedList.sort((a, b) {
+      if (a['needsLogging'] && !b['needsLogging']) return -1;
+      if (!a['needsLogging'] && b['needsLogging']) return 1;
+      return 0;
+    });
+    
+    return processedList;
+  }
+
+  bool _hasLoggedToday(dynamic lastLogDateStr) {
+    if (lastLogDateStr == null) return false;
+    
+    final lastLog = DateTime.tryParse(lastLogDateStr as String);
+    if (lastLog == null) return false;
+    
+    final today = DateTime.now();
+    return lastLog.year == today.year &&
+           lastLog.month == today.month &&
+           lastLog.day == today.day;
   }
 }
 
@@ -94,11 +161,15 @@ class _EmptyChallengesMessage extends StatelessWidget {
 
 class _ChallengesList extends StatelessWidget {
   final List<dynamic> challenges;
-  final List<dynamic> activeChallenges;
+  final List<Map<String, dynamic>> processedChallenges;
+  final VoidCallback? onRefresh;
+  final Function(Map<String, dynamic>) onNavigateToChallenge;
 
   const _ChallengesList({
     required this.challenges,
-    required this.activeChallenges,
+    required this.processedChallenges,
+    this.onRefresh,
+    required this.onNavigateToChallenge,
   });
 
   @override
@@ -108,58 +179,33 @@ class _ChallengesList extends StatelessWidget {
         document: gql(ChallengeSubscriptions.challengeUpdated),
       ),
       builder: (subResult) {
-        final displayChallenges = _updateWithSubscriptionData(
-          subResult.data,
-          challenges,
-          activeChallenges,
-        );
+        // Refresh on subscription update
+        if (subResult.data != null && onRefresh != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            onRefresh!();
+          });
+        }
 
         return SizedBox(
           height: 160,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: displayChallenges.length,
+            itemCount: processedChallenges.length,
             itemBuilder: (context, index) {
-              final challenge = displayChallenges[index];
-              return ActiveChallengeCard(challenge: challenge);
+              final item = processedChallenges[index];
+              final challenge = item['challenge'] as Map<String, dynamic>;
+              
+              return GestureDetector(
+                onTap: () => onNavigateToChallenge(challenge),
+                child: ActiveChallengeCard(
+                  challenge: challenge,
+                  needsLogging: item['needsLogging'] as bool,
+                ),
+              );
             },
           ),
         );
       },
     );
-  }
-
-  List<dynamic> _updateWithSubscriptionData(
-    Map<String, dynamic>? subscriptionData,
-    List<dynamic> allChallenges,
-    List<dynamic> currentActiveChallenges,
-  ) {
-    final updated = subscriptionData?['challengeUpdated'];
-    if (updated == null) return currentActiveChallenges;
-    
-    // Update the challenge list with new data
-    final index = allChallenges.indexWhere((c) => c['id'] == updated['id']);
-    if (index != -1) {
-      allChallenges[index] = updated;
-    } else {
-      allChallenges.add(updated);
-    }
-    
-    // Re-filter for active challenges
-    return allChallenges.where((challenge) {
-      if (challenge['status'] == 'expired') return false;
-      
-      final participants = challenge['participants'] as List<dynamic>?;
-      if (participants == null) return false;
-      
-      try {
-        participants.firstWhere(
-          (p) => p['user'] != null && p['status'] == 'accepted',
-        );
-        return true;
-      } catch (_) {
-        return false;
-      }
-    }).toList();
   }
 }
