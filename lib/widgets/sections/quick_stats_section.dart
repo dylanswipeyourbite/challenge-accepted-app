@@ -1,8 +1,6 @@
-// lib/widgets/sections/quick_stats_section.dart
-
 import 'package:flutter/material.dart';
-import 'package:graphql_flutter/graphql_flutter.dart';
-import 'package:challengeaccepted/graphql/queries/user_queries.dart';
+import 'package:provider/provider.dart';
+import 'package:challengeaccepted/providers/user_activity_provider.dart';
 import 'package:challengeaccepted/widgets/cards/stat_card.dart';
 
 class QuickStatsSection extends StatelessWidget {
@@ -10,22 +8,26 @@ class QuickStatsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Query(
-      options: QueryOptions(
-        document: gql(UserQueries.getUserStats),
-        fetchPolicy: FetchPolicy.cacheAndNetwork,
-      ),
-      builder: (result, {refetch, fetchMore}) {
-        if (result.isLoading && result.data == null) {
+    return Consumer<UserActivityProvider>(
+      builder: (context, provider, child) {
+        print('QuickStatsSection: isLoading=${provider.isLoadingStats}, error=${provider.error}, streak=${provider.currentStreak}');
+        
+        if (provider.isLoadingStats && provider.currentStreak == 0) {
           return const _LoadingStats();
         }
 
-        final stats = result.data?['userStats'] as Map<String, dynamic>?;
-        if (stats == null) {
-          return const _EmptyStats();
+        if (provider.error != null) {
+          return _ErrorStats(
+            error: provider.error!,
+            onRetry: () => provider.fetchUserStats(),
+          );
         }
 
-        return _StatsContent(stats: stats);
+        return _StatsContent(
+          currentStreak: provider.currentStreak,
+          totalPoints: provider.totalPoints,
+          completedChallenges: provider.completedChallenges,
+        );
       },
     );
   }
@@ -47,33 +49,44 @@ class _LoadingStats extends StatelessWidget {
   }
 }
 
-class _EmptyStats extends StatelessWidget {
-  const _EmptyStats();
+class _ErrorStats extends StatelessWidget {
+  final String error;
+  final VoidCallback onRetry;
+
+  const _ErrorStats({
+    required this.error,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        StatCard(label: "Streak", value: "0🔥"),
-        StatCard(label: "Points", value: "0"),
-        StatCard(label: "Challenges", value: "0"),
-      ],
+    return Center(
+      child: Column(
+        children: [
+          const Text('Error loading stats'),
+          TextButton(
+            onPressed: onRetry,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _StatsContent extends StatelessWidget {
-  final Map<String, dynamic> stats;
+  final int currentStreak;
+  final int totalPoints;
+  final int completedChallenges;
 
-  const _StatsContent({required this.stats});
+  const _StatsContent({
+    required this.currentStreak,
+    required this.totalPoints,
+    required this.completedChallenges,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final currentStreak = stats['currentStreak'] as int? ?? 0;
-    final totalPoints = stats['totalPoints'] as int? ?? 0;
-    final completedChallenges = stats['completedChallenges'] as int? ?? 0;
-
     final (thirdStatValue, thirdStatLabel) = _calculateMilestone(totalPoints);
 
     return Row(

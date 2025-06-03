@@ -1,8 +1,6 @@
-// lib/widgets/sections/quick_actions_section.dart
-
 import 'package:flutter/material.dart';
-import 'package:graphql_flutter/graphql_flutter.dart';
-import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
+import 'package:provider/provider.dart';
+import 'package:challengeaccepted/providers/challenge_provider.dart';
 import 'package:challengeaccepted/pages/daily_activity_selector_page.dart';
 import 'package:challengeaccepted/pages/create_challenge_page.dart';
 
@@ -11,21 +9,15 @@ class QuickActionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Query(
-      options: QueryOptions(
-        document: gql(ChallengesQueries.getActiveChallenges),
-        fetchPolicy: FetchPolicy.cacheAndNetwork,
-      ),
-      builder: (result, {refetch, fetchMore}) {
-        final stats = _calculateChallengeStats(result.data);
-        
+    return Consumer<ChallengeProvider>(
+      builder: (context, provider, child) {
         return Row(
           children: [
             Expanded(
               child: _LogActivityButton(
-                challengesNeedingLog: stats.needingLog,
-                totalActiveChallenges: stats.total,
-                allLogged: stats.allLogged,
+                challengesNeedingLog: provider.challengesNeedingLogCount,
+                totalActiveChallenges: provider.activeChallenges.length,
+                allLogged: provider.allChallengesLoggedToday,
               ),
             ),
             const SizedBox(width: 12),
@@ -35,71 +27,6 @@ class QuickActionsSection extends StatelessWidget {
       },
     );
   }
-
-  Map<String, dynamic>? _findAcceptedParticipant(List<dynamic> participants) {
-    try {
-      return participants.firstWhere(
-        (p) => p['isCurrentUser'] == true && p['status'] == 'accepted',
-      ) as Map<String, dynamic>;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  _ChallengeStats _calculateChallengeStats(Map<String, dynamic>? data) {
-    if (data == null) return const _ChallengeStats(0, 0, false);
-    
-    final challenges = data['challenges'] as List<dynamic>? ?? [];
-    int challengesNeedingLog = 0;
-    int totalActiveChallenges = 0;
-    
-    for (final challenge in challenges) {
-      if (challenge['status'] == 'expired') continue;
-      
-      final participants = challenge['participants'] as List<dynamic>?;
-      if (participants == null) continue;
-      
-      final userParticipant = _findAcceptedParticipant(participants);
-      if (userParticipant == null) continue;
-      
-      totalActiveChallenges++;
-      
-      // Check using todayStatus
-      bool hasLoggedToday = false;
-      final todayStatus = challenge['todayStatus'] as Map<String, dynamic>?;
-      if (todayStatus != null) {
-        final participantsStatus = todayStatus['participantsStatus'] as List?;
-        if (participantsStatus != null) {
-          try {
-            final currentUserStatus = participantsStatus.firstWhere(
-              (status) => status['participant']['isCurrentUser'] == true,
-            );
-            hasLoggedToday = currentUserStatus['hasLoggedToday'] as bool? ?? false;
-          } catch (_) {
-            // Current user not found in today's status
-          }
-        }
-      }
-      
-      if (!hasLoggedToday) {
-        challengesNeedingLog++;
-      }
-    }
-    
-    return _ChallengeStats(
-      challengesNeedingLog,
-      totalActiveChallenges,
-      totalActiveChallenges > 0 && challengesNeedingLog == 0,
-    );
-  }
-}
-
-class _ChallengeStats {
-  final int needingLog;
-  final int total;
-  final bool allLogged;
-
-  const _ChallengeStats(this.needingLog, this.total, this.allLogged);
 }
 
 class _LogActivityButton extends StatelessWidget {

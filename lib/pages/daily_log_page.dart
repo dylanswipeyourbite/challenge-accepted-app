@@ -1,8 +1,5 @@
-// Update the IntegratedDailyLogPage in lib/pages/daily_log_page.dart
-// This shows the key change to return a result when activity is logged
-
-import 'package:flutter/material.dart';
 import 'package:challengeaccepted/widgets/forms/daily_log_form.dart';
+import 'package:flutter/material.dart';
 import 'package:challengeaccepted/widgets/cards/streak_display_card.dart';
 import 'package:challengeaccepted/widgets/cards/rest_day_info_card.dart';
 
@@ -56,10 +53,10 @@ class IntegratedDailyLogPage extends StatelessWidget {
               allowedRestDays: allowedRestDays,
             ),
             const SizedBox(height: 24),
-            DailyLogForm(
+            RefactoredDailyLogForm(
               challengeId: challengeId,
+              challengeTitle: challengeTitle,
               canTakeRestDay: usedRestDays < allowedRestDays,
-              challengeTitle: challengeTitle, // Add this line
               onComplete: () {
                 // Return true to indicate successful logging
                 Navigator.of(context).pop(true);

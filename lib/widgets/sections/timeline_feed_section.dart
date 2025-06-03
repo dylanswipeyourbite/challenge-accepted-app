@@ -1,69 +1,128 @@
 import 'package:flutter/material.dart';
-import 'package:graphql_flutter/graphql_flutter.dart';
-import 'package:challengeaccepted/graphql/queries/media_queries.dart';
+import 'package:provider/provider.dart';
+import 'package:challengeaccepted/providers/user_activity_provider.dart';
 import 'package:challengeaccepted/widgets/cards/post_card.dart';
-import 'package:challengeaccepted/utils/graphql_helpers.dart';
 
 class TimelineFeedSection extends StatelessWidget {
   const TimelineFeedSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Query(
-      options: QueryOptions(
-        document: gql(MediaQueries.getTimelineMedia),
-        fetchPolicy: GraphQLHelpers.getFetchPolicyFor(QueryType.timeline),
-        // This will show cached data immediately, then fetch fresh data
-      ),
-      builder: (result, {refetch, fetchMore}) {
-        // Handle different states
-        final isFirstLoad = result.isLoading && result.data == null;
-        final isRefreshing = result.isLoading && result.data != null;
-        
-        if (isFirstLoad) {
-          return const _TimelineSkeletonLoader();
-        }
-
-        if (result.hasException && result.data == null) {
-          return _ErrorState(
-            error: result.exception.toString(),
-            onRetry: refetch,
-          );
-        }
-
-        final mediaList = result.data?['timelineMedia'] as List<dynamic>? ?? [];
-
+    return Consumer<UserActivityProvider>(
+      builder: (context, provider, child) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Timeline",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                if (isRefreshing)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-              ],
-            ),
+            _buildHeader(provider.isLoadingTimeline),
             const SizedBox(height: 8),
-            if (mediaList.isEmpty)
-              const _EmptyTimeline()
-            else
-              _TimelineList(
-                mediaList: mediaList,
-                onRefetch: refetch,
-              ),
+            _buildContent(context, provider),
           ],
         );
       },
     );
+  }
+
+  Widget _buildHeader(bool isRefreshing) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          "Timeline",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        if (isRefreshing)
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context, UserActivityProvider provider) {
+    // First load
+    if (provider.isLoadingTimeline && provider.timelineMedia.isEmpty) {
+      return const _TimelineSkeletonLoader();
+    }
+
+    // Error state
+    if (provider.error != null && provider.timelineMedia.isEmpty) {
+      return _ErrorState(
+        error: provider.error!,
+        onRetry: () => provider.fetchTimelineMedia(),
+      );
+    }
+
+    // Empty state
+    if (provider.timelineMedia.isEmpty) {
+      return const _EmptyTimeline();
+    }
+
+    // Timeline list
+    return _TimelineList(
+      mediaList: provider.timelineMedia,
+      onMediaInteraction: (mediaId, {hasCheered, comments}) {
+        provider.updateMediaInteraction(
+          mediaId,
+          hasCheered: hasCheered,
+          comments: comments,
+        );
+      },
+    );
+  }
+}
+
+class _TimelineList extends StatelessWidget {
+  final List<Map<String, dynamic>> mediaList;
+  final Function(String mediaId, {bool? hasCheered, List? comments}) onMediaInteraction;
+
+  const _TimelineList({
+    required this.mediaList,
+    required this.onMediaInteraction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: mediaList.length,
+      itemBuilder: (context, index) {
+        final media = mediaList[index];
+        return _buildPostCard(media);
+      },
+    );
+  }
+
+  Widget _buildPostCard(Map<String, dynamic> media) {
+    final user = media['user'] as Map<String, dynamic>?;
+    final cheers = media['cheers'] as List<dynamic>? ?? [];
+    final comments = media['comments'] as List<dynamic>? ?? [];
+    final dailyLog = media['dailyLog'] as Map<String, dynamic>?;
+    
+    return PostCard(
+      mediaId: media['id'] as String,
+      imageUrl: media['url'] as String,
+      displayName: user?['displayName'] as String? ?? 'Unknown',
+      avatarUrl: user?['avatarUrl'] as String? ?? '',
+      cheers: cheers,
+      comments: comments,
+      hasCheered: media['hasCheered'] as bool? ?? false,
+      onRefetch: () {
+        // Update is handled by provider
+        onMediaInteraction(media['id'] as String);
+      },
+      caption: media['caption'] as String?,
+      uploadedAt: _parseDateTime(media['uploadedAt']),
+      dailyLog: dailyLog,
+    );
+  }
+
+  DateTime? _parseDateTime(dynamic dateStr) {
+    if (dateStr == null) return null;
+    return DateTime.tryParse(dateStr as String);
   }
 }
 
@@ -73,11 +132,14 @@ class _TimelineSkeletonLoader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: List.generate(2, (index) => _buildSkeletonCard()),
+      children: List.generate(2, (index) => _SkeletonCard()),
     );
   }
+}
 
-  Widget _buildSkeletonCard() {
+class _SkeletonCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
@@ -224,54 +286,5 @@ class _EmptyTimeline extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _TimelineList extends StatelessWidget {
-  final List<dynamic> mediaList;
-  final VoidCallback? onRefetch;
-
-  const _TimelineList({
-    required this.mediaList,
-    this.onRefetch,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: mediaList.length,
-      itemBuilder: (context, index) {
-        final media = mediaList[index] as Map<String, dynamic>;
-        return _buildPostCard(media);
-      },
-    );
-  }
-
-  Widget _buildPostCard(Map<String, dynamic> media) {
-    final user = media['user'] as Map<String, dynamic>?;
-    final cheers = media['cheers'] as List<dynamic>? ?? [];
-    final comments = media['comments'] as List<dynamic>? ?? [];
-    final dailyLog = media['dailyLog'] as Map<String, dynamic>?;
-    
-    return PostCard(
-      mediaId: media['id'] as String,
-      imageUrl: media['url'] as String,
-      displayName: user?['displayName'] as String? ?? 'Unknown',
-      avatarUrl: user?['avatarUrl'] as String? ?? '',
-      cheers: cheers,
-      comments: comments,
-      hasCheered: media['hasCheered'] as bool? ?? false,
-      onRefetch: onRefetch,
-      caption: media['caption'] as String?,
-      uploadedAt: _parseDateTime(media['uploadedAt']),
-      dailyLog: dailyLog,
-    );
-  }
-
-  DateTime? _parseDateTime(dynamic dateStr) {
-    if (dateStr == null) return null;
-    return DateTime.tryParse(dateStr as String);
   }
 }

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:graphql_flutter/graphql_flutter.dart';
-import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
-import 'package:challengeaccepted/graphql/subscriptions/challenge_subscriptions.dart';
+import 'package:provider/provider.dart';
+import 'package:challengeaccepted/providers/challenge_provider.dart';
+import 'package:challengeaccepted/providers/app_providers.dart';
 import 'package:challengeaccepted/widgets/cards/active_challenge_card.dart';
 import 'package:challengeaccepted/pages/challenge_detail_pagev2.dart';
-import 'package:challengeaccepted/utils/graphql_helpers.dart';
 
 class ActiveChallengesSection extends StatelessWidget {
   const ActiveChallengesSection({super.key});
@@ -19,32 +18,29 @@ class ActiveChallengesSection extends StatelessWidget {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Query(
-          options: QueryOptions(
-            document: gql(ChallengesQueries.getActiveChallenges),
-            fetchPolicy: FetchPolicy.cacheAndNetwork,
-          ),
-          builder: (result, {fetchMore, refetch}) {
-            if (result.isLoading && result.data == null) {
+        Consumer<ChallengeProvider>(
+          builder: (context, provider, child) {
+            if (provider.isLoading && provider.activeChallenges.isEmpty) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (result.hasException) {
-              return Text('Error: ${result.exception.toString()}');
+            if (provider.error != null) {
+              return Text('Error: ${provider.error}');
             }
             
-            final challenges = result.data?['challenges'] as List<dynamic>? ?? [];
-            final processedChallenges = _processAndSortChallenges(challenges);
+            final processedChallenges = _processAndSortChallenges(
+              provider.activeChallenges,
+              provider.todayLogStatus,
+            );
 
             if (processedChallenges.isEmpty) {
               return const _EmptyChallengesMessage();
             }
 
             return _ChallengesList(
-              challenges: challenges,
               processedChallenges: processedChallenges,
-              onRefresh: refetch,
-              onNavigateToChallenge: (challenge) => _navigateToChallenge(context, challenge, refetch),
+              onNavigateToChallenge: (challenge) => 
+                _navigateToChallenge(context, challenge),
             );
           },
         ),
@@ -55,7 +51,6 @@ class ActiveChallengesSection extends StatelessWidget {
   Future<void> _navigateToChallenge(
     BuildContext context, 
     Map<String, dynamic> challenge,
-    VoidCallback? refetch,
   ) async {
     final result = await Navigator.push(
       context,
@@ -65,58 +60,26 @@ class ActiveChallengesSection extends StatelessWidget {
     );
     
     // If we returned with a result indicating activity was logged
-    if (result == true) {
+    if (result == true && context.mounted) {
       // Force refresh
-      refetch?.call();
-      
-      // Also refresh using GraphQL helpers
-      final client = GraphQLProvider.of(context).value;
-      await GraphQLHelpers.refetchAfterPost(client, challenge['id'] as String);
+      await context.challengeProvider.refresh();
     }
   }
 
-  List<Map<String, dynamic>> _processAndSortChallenges(List<dynamic> challenges) {
+  List<Map<String, dynamic>> _processAndSortChallenges(
+    List<Map<String, dynamic>> challenges,
+    Map<String, bool> todayLogStatus,
+  ) {
     final List<Map<String, dynamic>> processedList = [];
     
     for (final challenge in challenges) {
-      if (challenge['status'] == 'expired') continue;
+      final challengeId = challenge['id'] as String;
+      final hasLoggedToday = todayLogStatus[challengeId] ?? false;
       
-      final participants = challenge['participants'] as List<dynamic>?;
-      if (participants == null) continue;
-      
-      try {
-        // Find the current user's participant record
-        final currentUserParticipant = participants.firstWhere(
-          (p) => p['isCurrentUser'] == true,
-        );
-        
-        // Check if the current user has accepted
-        if (currentUserParticipant['status'] != 'accepted') continue;
-        
-        // Check if user has logged today using todayStatus
-        bool hasLoggedToday = false;
-        final todayStatus = challenge['todayStatus'] as Map<String, dynamic>?;
-        if (todayStatus != null) {
-          final participantsStatus = todayStatus['participantsStatus'] as List?;
-          if (participantsStatus != null) {
-            try {
-              final currentUserStatus = participantsStatus.firstWhere(
-                (status) => status['participant']['isCurrentUser'] == true,
-              );
-              hasLoggedToday = currentUserStatus['hasLoggedToday'] as bool? ?? false;
-            } catch (_) {
-              // Current user not found in today's status
-            }
-          }
-        }
-        
-        processedList.add({
-          'challenge': challenge,
-          'needsLogging': !hasLoggedToday,
-        });
-      } catch (_) {
-        continue;
-      }
+      processedList.add({
+        'challenge': challenge,
+        'needsLogging': !hasLoggedToday,
+      });
     }
     
     // Sort: challenges needing logging first
@@ -150,52 +113,34 @@ class _EmptyChallengesMessage extends StatelessWidget {
 }
 
 class _ChallengesList extends StatelessWidget {
-  final List<dynamic> challenges;
   final List<Map<String, dynamic>> processedChallenges;
-  final VoidCallback? onRefresh;
   final Function(Map<String, dynamic>) onNavigateToChallenge;
 
   const _ChallengesList({
-    required this.challenges,
     required this.processedChallenges,
-    this.onRefresh,
     required this.onNavigateToChallenge,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Subscription(
-      options: SubscriptionOptions(
-        document: gql(ChallengeSubscriptions.challengeUpdated),
+    return SizedBox(
+      height: 160,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: processedChallenges.length,
+        itemBuilder: (context, index) {
+          final item = processedChallenges[index];
+          final challenge = item['challenge'] as Map<String, dynamic>;
+          
+          return GestureDetector(
+            onTap: () => onNavigateToChallenge(challenge),
+            child: ActiveChallengeCard(
+              challenge: challenge,
+              needsLogging: item['needsLogging'] as bool,
+            ),
+          );
+        },
       ),
-      builder: (subResult) {
-        // Refresh on subscription update
-        if (subResult.data != null && onRefresh != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            onRefresh!();
-          });
-        }
-
-        return SizedBox(
-          height: 160,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: processedChallenges.length,
-            itemBuilder: (context, index) {
-              final item = processedChallenges[index];
-              final challenge = item['challenge'] as Map<String, dynamic>;
-              
-              return GestureDetector(
-                onTap: () => onNavigateToChallenge(challenge),
-                child: ActiveChallengeCard(
-                  challenge: challenge,
-                  needsLogging: item['needsLogging'] as bool,
-                ),
-              );
-            },
-          ),
-        );
-      },
     );
   }
 }
