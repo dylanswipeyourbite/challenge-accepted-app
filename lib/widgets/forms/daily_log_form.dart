@@ -4,6 +4,8 @@ import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/utils/graphql_helpers.dart';
 import 'package:challengeaccepted/widgets/forms/activity_type_selector.dart';
 import 'package:challengeaccepted/widgets/forms/media_upload_section.dart';
+import 'package:provider/provider.dart';
+import 'package:challengeaccepted/providers/refresh_provider.dart';
 
 class DailyLogForm extends StatefulWidget {
   final String challengeId;
@@ -105,48 +107,54 @@ class _DailyLogFormState extends State<DailyLogForm> {
     return Mutation(
       options: MutationOptions(
         document: gql(hasMedia ? logActivityWithMedia : logActivityOnly),
-        onCompleted: (data) async {
-          if (data == null) return;
-          
-          final points = data['logDailyActivity']?['points'] ?? 0;
-          final newStreak = data['logDailyActivity']?['participant']?['dailyStreak'] ?? 0;
-          
-          // Haptic feedback
-          HapticFeedback.mediumImpact();
-          
-          // Show success message
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.check_circle, color: Colors.white),
+        // Then update the onCompleted callback in the Mutation:
+      onCompleted: (data) async {
+        if (data == null) return;
+        
+        final points = data['logDailyActivity']?['points'] ?? 0;
+        final newStreak = data['logDailyActivity']?['participant']?['dailyStreak'] ?? 0;
+        
+        // Haptic feedback
+        HapticFeedback.mediumImpact();
+        
+        // Show success message
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text('Logged! +$points points'),
+                  if (newStreak > 0) ...[
                     const SizedBox(width: 8),
-                    Text('Logged! +$points points'),
-                    if (newStreak > 0) ...[
-                      const SizedBox(width: 8),
-                      Text('🔥 $newStreak day streak!'),
-                    ],
+                    Text('🔥 $newStreak day streak!'),
                   ],
-                ),
-                backgroundColor: Colors.green,
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 3),
+                ],
               ),
-            );
-          }
-          
-          // Refresh affected queries
-          final client = GraphQLProvider.of(context).value;
-          await GraphQLHelpers.refetchAfterPost(client, widget.challengeId);
-          
-          // Small delay for animation
-          await Future.delayed(const Duration(milliseconds: 300));
-          
-          if (context.mounted) {
-            widget.onComplete();
-          }
-        },
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        
+        // Refresh affected queries
+        final client = GraphQLProvider.of(context).value;
+        await GraphQLHelpers.refetchAfterPost(client, widget.challengeId);
+        
+        // Notify homepage to refresh
+        if (context.mounted) {
+          context.read<RefreshProvider>().refreshHomePage();
+        }
+        
+        // Small delay for animation
+        await Future.delayed(const Duration(milliseconds: 300));
+        
+        if (context.mounted) {
+          widget.onComplete();
+        }
+      },
         onError: (error) {
           _handleError(error);
         },

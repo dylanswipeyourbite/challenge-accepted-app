@@ -1,9 +1,6 @@
 // lib/widgets/cards/active_challenge_card.dart
 
-import 'package:challengeaccepted/pages/challenge_detail_pagev2.dart';
 import 'package:flutter/material.dart';
-import 'package:graphql_flutter/graphql_flutter.dart';
-import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
 
 class ActiveChallengeCard extends StatelessWidget {
   final Map<String, dynamic> challenge;
@@ -23,56 +20,37 @@ class ActiveChallengeCard extends StatelessWidget {
     final timeLimit = DateTime.tryParse(challenge['timeLimit'] as String? ?? '');
     final daysRemaining = timeLimit?.difference(DateTime.now()).inDays ?? 0;
     
-    return InkWell(
-      onTap: () => _navigateToDetail(context),
-      child: Container(
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
+    return Container(
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: needsLogging 
+            ? Border.all(color: Colors.orange, width: 3)
+            : null,
+      ),
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: needsLogging ? 5 : 3,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          border: needsLogging 
-              ? Border.all(color: Colors.orange, width: 3)
-              : null,
         ),
-        child: Card(
-          margin: EdgeInsets.zero,
-          elevation: needsLogging ? 5 : 3,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Container(
-            width: 220,
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(challengeStatus),
-                const SizedBox(height: 6),
-                _buildTitle(),
-                if (needsLogging) _buildNeedsLoggingIndicator(),
-                const Spacer(),
-                _buildFooter(acceptedCount, daysRemaining),
-              ],
-            ),
+        child: Container(
+          width: 220,
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(challengeStatus),
+              const SizedBox(height: 6),
+              _buildTitle(),
+              if (needsLogging) _buildNeedsLoggingIndicator(),
+              const Spacer(),
+              _buildFooter(acceptedCount, daysRemaining),
+            ],
           ),
         ),
       ),
     );
-  }
-
-  void _navigateToDetail(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChallengeDetailPageV2(challenge: challenge),
-      ),
-    ).then((_) {
-      // Refresh queries when returning from detail page
-      final client = GraphQLProvider.of(context).value;
-      client.query(QueryOptions(
-        document: gql(ChallengesQueries.getActiveChallenges),
-        fetchPolicy: FetchPolicy.networkOnly,
-      ));
-    });
   }
 
   Widget _buildHeader(_ChallengeStatus status) {

@@ -1,4 +1,5 @@
-// lib/pages/integrated_daily_log_page.dart
+// Update the IntegratedDailyLogPage in lib/pages/daily_log_page.dart
+// This shows the key change to return a result when activity is logged
 
 import 'package:flutter/material.dart';
 import 'package:challengeaccepted/widgets/forms/daily_log_form.dart';
@@ -58,7 +59,11 @@ class IntegratedDailyLogPage extends StatelessWidget {
             DailyLogForm(
               challengeId: challengeId,
               canTakeRestDay: usedRestDays < allowedRestDays,
-              onComplete: onComplete ?? () => Navigator.of(context).pop(),
+              onComplete: () {
+                // Return true to indicate successful logging
+                Navigator.of(context).pop(true);
+                onComplete?.call();
+              },
             ),
           ],
         ),

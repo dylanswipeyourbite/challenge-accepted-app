@@ -36,6 +36,16 @@ class QuickActionsSection extends StatelessWidget {
     );
   }
 
+  Map<String, dynamic>? _findAcceptedParticipant(List<dynamic> participants) {
+    try {
+      return participants.firstWhere(
+        (p) => p['isCurrentUser'] == true && p['status'] == 'accepted',
+      ) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
   _ChallengeStats _calculateChallengeStats(Map<String, dynamic>? data) {
     if (data == null) return const _ChallengeStats(0, 0, false);
     
@@ -54,7 +64,24 @@ class QuickActionsSection extends StatelessWidget {
       
       totalActiveChallenges++;
       
-      if (!_hasLoggedToday(userParticipant['lastLogDate'])) {
+      // Check using todayStatus
+      bool hasLoggedToday = false;
+      final todayStatus = challenge['todayStatus'] as Map<String, dynamic>?;
+      if (todayStatus != null) {
+        final participantsStatus = todayStatus['participantsStatus'] as List?;
+        if (participantsStatus != null) {
+          try {
+            final currentUserStatus = participantsStatus.firstWhere(
+              (status) => status['participant']['isCurrentUser'] == true,
+            );
+            hasLoggedToday = currentUserStatus['hasLoggedToday'] as bool? ?? false;
+          } catch (_) {
+            // Current user not found in today's status
+          }
+        }
+      }
+      
+      if (!hasLoggedToday) {
         challengesNeedingLog++;
       }
     }
@@ -64,28 +91,6 @@ class QuickActionsSection extends StatelessWidget {
       totalActiveChallenges,
       totalActiveChallenges > 0 && challengesNeedingLog == 0,
     );
-  }
-
-  Map<String, dynamic>? _findAcceptedParticipant(List<dynamic> participants) {
-    try {
-      return participants.firstWhere(
-        (p) => p['isCurrentUser'] == true && p['status'] == 'accepted',
-      ) as Map<String, dynamic>;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  bool _hasLoggedToday(dynamic lastLogDateStr) {
-    if (lastLogDateStr == null) return false;
-    
-    final lastLog = DateTime.tryParse(lastLogDateStr as String);
-    if (lastLog == null) return false;
-    
-    final today = DateTime.now();
-    return lastLog.year == today.year &&
-           lastLog.month == today.month &&
-           lastLog.day == today.day;
   }
 }
 

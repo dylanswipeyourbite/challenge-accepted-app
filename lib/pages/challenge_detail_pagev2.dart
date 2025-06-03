@@ -375,19 +375,25 @@ class _ChallengeDetailContentState extends State<_ChallengeDetailContent> {
           userParticipant: participant,
         ),
       ),
-    ).then((_) {
-      // Force refresh both the challenge and timeline queries
-      if (widget.onRefresh != null) {
-        widget.onRefresh!();
+    ).then((result) {
+      // If activity was logged successfully
+      if (result == true) {
+        // Pop back to home with a result indicating success
+        Navigator.of(context).pop(true);
+      } else {
+        // Just refresh the current page
+        if (widget.onRefresh != null) {
+          widget.onRefresh!();
+        }
+        
+        // Also refresh the media query
+        final client = GraphQLProvider.of(context).value;
+        client.query(QueryOptions(
+          document: gql(MediaQueries.getMediaByChallenge),
+          variables: {'challengeId': widget.challenge['id']},
+          fetchPolicy: FetchPolicy.networkOnly,
+        ));
       }
-      
-      // Also refresh the media query
-      final client = GraphQLProvider.of(context).value;
-      client.query(QueryOptions(
-        document: gql(MediaQueries.getMediaByChallenge),
-        variables: {'challengeId': widget.challenge['id']},
-        fetchPolicy: FetchPolicy.networkOnly,
-      ));
     });
   }
 

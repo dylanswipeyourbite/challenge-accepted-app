@@ -50,37 +50,55 @@ class ChallengesQueries {
     }
   """;
 
-  static const String getActiveChallenges = """
-    query GetActiveChallenges {
-      challenges {
-        id
-        title
-        sport
-        type
-        timeLimit
-        wager
-        status
-        createdBy {
+    static const String getActiveChallenges = """
+      query GetActiveChallenges {
+        challenges {
           id
-          displayName
-          avatarUrl
-        }
-        participants {
-          isCurrentUser
-          user {
+          title
+          sport
+          type
+          timeLimit
+          wager
+          status
+          createdBy {
             id
             displayName
             avatarUrl
           }
-          role
-          progress
-          status
-          dailyStreak
-          totalPoints
+          participants {
+            isCurrentUser
+            user {
+              id
+              displayName
+              avatarUrl
+            }
+            role
+            progress
+            status
+            dailyStreak
+            totalPoints
+            lastLogDate
+          }
+          todayStatus {
+            allParticipantsLogged
+            participantsLoggedCount
+            totalParticipants
+            participantsStatus {
+              participant {
+                id
+                isCurrentUser
+                user {
+                  id
+                  displayName
+                }
+              }
+              hasLoggedToday
+              lastLogTime
+            }
+          }
         }
       }
-    }
-  """;
+    """;
 
   static const String pendingChallenges = """
     query PendingChallenges {

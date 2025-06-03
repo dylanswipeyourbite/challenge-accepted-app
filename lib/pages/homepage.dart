@@ -4,12 +4,12 @@ import 'package:challengeaccepted/widgets/sections/quick_actions_section.dart';
 import 'package:challengeaccepted/widgets/sections/active_challenges_section.dart';
 import 'package:challengeaccepted/widgets/sections/pending_invites_section.dart';
 import 'package:challengeaccepted/widgets/sections/timeline_feed_section.dart';
-import 'package:challengeaccepted/utils/refresh_notifier.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
 import 'package:challengeaccepted/graphql/queries/user_queries.dart';
+import 'package:challengeaccepted/graphql/queries/media_queries.dart';
 
 class HomeDashboardPage extends StatefulWidget {
   const HomeDashboardPage({super.key});
@@ -19,28 +19,16 @@ class HomeDashboardPage extends StatefulWidget {
 }
 
 class _HomeDashboardPageState extends State<HomeDashboardPage> with WidgetsBindingObserver {
-  final RefreshNotifier _refreshNotifier = RefreshNotifier();
-  Key _pageKey = UniqueKey();
-  
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _refreshNotifier.addListener(_onRefreshRequested);
   }
 
   @override
   void dispose() {
-    _refreshNotifier.removeListener(_onRefreshRequested);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
-  }
-
-  void _onRefreshRequested() {
-    setState(() {
-      _pageKey = UniqueKey();
-    });
-    _refreshAllData();
   }
 
   @override
@@ -50,25 +38,29 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with WidgetsBindi
     }
   }
 
-  void _refreshAllData() {
+  Future<void> _refreshAllData() async {
     final client = GraphQLProvider.of(context).value;
     
-    // Refresh all relevant queries
-    client.query(QueryOptions(
-      document: gql(ChallengesQueries.getActiveChallenges),
-      fetchPolicy: FetchPolicy.networkOnly,
-    ));
-    
-    client.query(QueryOptions(
-      document: gql(UserQueries.getUserStats),
-      fetchPolicy: FetchPolicy.networkOnly,
-    ));
+    // Refresh all relevant queries with network-only policy
+    await Future.wait([
+      client.query(QueryOptions(
+        document: gql(ChallengesQueries.getActiveChallenges),
+        fetchPolicy: FetchPolicy.networkOnly,
+      )),
+      client.query(QueryOptions(
+        document: gql(UserQueries.getUserStats),
+        fetchPolicy: FetchPolicy.networkOnly,
+      )),
+      client.query(QueryOptions(
+        document: gql(MediaQueries.getTimelineMedia),
+        fetchPolicy: FetchPolicy.networkOnly,
+      )),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _pageKey,
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
@@ -91,13 +83,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with WidgetsBindi
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          _refreshAllData();
-          setState(() {
-            _pageKey = UniqueKey();
-          });
-          await Future.delayed(const Duration(seconds: 1));
-        },
+        onRefresh: _refreshAllData,
         child: const SingleChildScrollView(
           physics: AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.all(16.0),

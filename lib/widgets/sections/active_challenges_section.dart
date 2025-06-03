@@ -4,17 +4,10 @@ import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
 import 'package:challengeaccepted/graphql/subscriptions/challenge_subscriptions.dart';
 import 'package:challengeaccepted/widgets/cards/active_challenge_card.dart';
 import 'package:challengeaccepted/pages/challenge_detail_pagev2.dart';
+import 'package:challengeaccepted/utils/graphql_helpers.dart';
 
-class ActiveChallengesSection extends StatefulWidget {
+class ActiveChallengesSection extends StatelessWidget {
   const ActiveChallengesSection({super.key});
-
-  @override
-  State<ActiveChallengesSection> createState() => _ActiveChallengesSectionState();
-}
-
-class _ActiveChallengesSectionState extends State<ActiveChallengesSection> {
-  // Key to force rebuild of Query widget
-  Key _queryKey = UniqueKey();
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +20,6 @@ class _ActiveChallengesSectionState extends State<ActiveChallengesSection> {
         ),
         const SizedBox(height: 8),
         Query(
-          key: _queryKey,
           options: QueryOptions(
             document: gql(ChallengesQueries.getActiveChallenges),
             fetchPolicy: FetchPolicy.cacheAndNetwork,
@@ -65,25 +57,21 @@ class _ActiveChallengesSectionState extends State<ActiveChallengesSection> {
     Map<String, dynamic> challenge,
     VoidCallback? refetch,
   ) async {
-    await Navigator.push(
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ChallengeDetailPageV2(challenge: challenge),
       ),
     );
     
-    // Force refresh when returning
-    if (mounted) {
-      setState(() {
-        _queryKey = UniqueKey();
-      });
+    // If we returned with a result indicating activity was logged
+    if (result == true) {
+      // Force refresh
+      refetch?.call();
       
-      // Also ensure GraphQL cache is refreshed
+      // Also refresh using GraphQL helpers
       final client = GraphQLProvider.of(context).value;
-      await client.query(QueryOptions(
-        document: gql(ChallengesQueries.getActiveChallenges),
-        fetchPolicy: FetchPolicy.networkOnly,
-      ));
+      await GraphQLHelpers.refetchAfterPost(client, challenge['id'] as String);
     }
   }
 
@@ -105,8 +93,22 @@ class _ActiveChallengesSectionState extends State<ActiveChallengesSection> {
         // Check if the current user has accepted
         if (currentUserParticipant['status'] != 'accepted') continue;
         
-        // Check if user has logged today
-        final hasLoggedToday = _hasLoggedToday(currentUserParticipant['lastLogDate']);
+        // Check if user has logged today using todayStatus
+        bool hasLoggedToday = false;
+        final todayStatus = challenge['todayStatus'] as Map<String, dynamic>?;
+        if (todayStatus != null) {
+          final participantsStatus = todayStatus['participantsStatus'] as List?;
+          if (participantsStatus != null) {
+            try {
+              final currentUserStatus = participantsStatus.firstWhere(
+                (status) => status['participant']['isCurrentUser'] == true,
+              );
+              hasLoggedToday = currentUserStatus['hasLoggedToday'] as bool? ?? false;
+            } catch (_) {
+              // Current user not found in today's status
+            }
+          }
+        }
         
         processedList.add({
           'challenge': challenge,
@@ -125,18 +127,6 @@ class _ActiveChallengesSectionState extends State<ActiveChallengesSection> {
     });
     
     return processedList;
-  }
-
-  bool _hasLoggedToday(dynamic lastLogDateStr) {
-    if (lastLogDateStr == null) return false;
-    
-    final lastLog = DateTime.tryParse(lastLogDateStr as String);
-    if (lastLog == null) return false;
-    
-    final today = DateTime.now();
-    return lastLog.year == today.year &&
-           lastLog.month == today.month &&
-           lastLog.day == today.day;
   }
 }
 

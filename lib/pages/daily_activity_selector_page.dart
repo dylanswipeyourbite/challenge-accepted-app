@@ -86,8 +86,8 @@ class _DailyActivitySelectorPageState extends State<DailyActivitySelectorPage> {
           if (activeChallenges.isEmpty) {
             return EmptyState(
               icon: Icons.info_outline,
-              title: 'No active challenges',
-              message: 'Join a challenge first to log activities',
+              title: 'No challenges need logging',
+              message: 'All your challenges have been logged for today!',
               actionLabel: 'Go Back',
               onAction: () => Navigator.of(context).pop(),
             );
@@ -143,7 +143,28 @@ class _DailyActivitySelectorPageState extends State<DailyActivitySelectorPage> {
         );
         
         // Check if the current user has accepted
-        return currentUserParticipant['status'] == 'accepted';
+        if (currentUserParticipant['status'] != 'accepted') return false;
+        
+        // Check if user has already logged today
+        final todayStatus = challenge['todayStatus'] as Map<String, dynamic>?;
+        if (todayStatus != null) {
+          final participantsStatus = todayStatus['participantsStatus'] as List?;
+          if (participantsStatus != null) {
+            try {
+              final currentUserStatus = participantsStatus.firstWhere(
+                (status) => status['participant']['isCurrentUser'] == true,
+              );
+              final hasLoggedToday = currentUserStatus['hasLoggedToday'] as bool? ?? false;
+              // Only show challenges that haven't been logged yet
+              return !hasLoggedToday;
+            } catch (_) {
+              // Current user not found in today's status, show the challenge
+              return true;
+            }
+          }
+        }
+        
+        return true;
       } catch (_) {
         return false;
       }

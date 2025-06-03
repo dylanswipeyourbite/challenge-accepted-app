@@ -1,6 +1,7 @@
 // lib/pages/multi_challenge_daily_log_page.dart
 
 import 'package:challengeaccepted/pages/daily_log_page.dart';
+import 'package:challengeaccepted/providers/refresh_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,6 +9,7 @@ import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
 import 'package:challengeaccepted/widgets/dialogs/completion_dialog.dart';
 import 'package:challengeaccepted/widgets/common/loading_indicator.dart';
 import 'package:challengeaccepted/widgets/common/error_message.dart';
+import 'package:provider/provider.dart';
 
 class MultiChallengeDailyLogPage extends StatefulWidget {
   final List<String> challengeIds;
@@ -38,6 +40,9 @@ class _MultiChallengeDailyLogPageState extends State<MultiChallengeDailyLogPage>
   }
 
   void _showCompletionDialog() {
+    // Notify homepage to refresh
+    context.read<RefreshProvider>().refreshHomePage();
+    
     showDialog(
       context: context,
       barrierDismissible: false,
