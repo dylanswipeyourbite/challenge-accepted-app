@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
-import 'package:challengeaccepted/providers/app_providers.dart';
 import 'package:challengeaccepted/widgets/cards/active_challenge_card.dart';
-import 'package:challengeaccepted/pages/challenge_detail_pagev2.dart';
+import 'package:challengeaccepted/utils/navigation_helper.dart';
 
 class ActiveChallengesSection extends StatelessWidget {
   const ActiveChallengesSection({super.key});
@@ -39,8 +38,6 @@ class ActiveChallengesSection extends StatelessWidget {
 
             return _ChallengesList(
               processedChallenges: processedChallenges,
-              onNavigateToChallenge: (challenge) => 
-                _navigateToChallenge(context, challenge),
             );
           },
         ),
@@ -48,23 +45,7 @@ class ActiveChallengesSection extends StatelessWidget {
     );
   }
 
-  Future<void> _navigateToChallenge(
-    BuildContext context, 
-    Map<String, dynamic> challenge,
-  ) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChallengeDetailPageV2(challenge: challenge),
-      ),
-    );
-    
-    // If we returned with a result indicating activity was logged
-    if (result == true && context.mounted) {
-      // Force refresh
-      await context.challengeProvider.refresh();
-    }
-  }
+
 
   List<Map<String, dynamic>> _processAndSortChallenges(
     List<Map<String, dynamic>> challenges,
@@ -114,11 +95,9 @@ class _EmptyChallengesMessage extends StatelessWidget {
 
 class _ChallengesList extends StatelessWidget {
   final List<Map<String, dynamic>> processedChallenges;
-  final Function(Map<String, dynamic>) onNavigateToChallenge;
 
   const _ChallengesList({
     required this.processedChallenges,
-    required this.onNavigateToChallenge,
   });
 
   @override
@@ -133,7 +112,10 @@ class _ChallengesList extends StatelessWidget {
           final challenge = item['challenge'] as Map<String, dynamic>;
           
           return GestureDetector(
-            onTap: () => onNavigateToChallenge(challenge),
+            onTap: () => NavigationHelper.navigateToChallengeDetail(
+              context,
+              challenge['id'] as String,
+            ),
             child: ActiveChallengeCard(
               challenge: challenge,
               needsLogging: item['needsLogging'] as bool,

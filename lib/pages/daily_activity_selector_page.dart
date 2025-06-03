@@ -1,12 +1,8 @@
-// lib/pages/daily_activity_selector_page.dart
-
 import 'package:flutter/material.dart';
-import 'package:graphql_flutter/graphql_flutter.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
+import 'package:provider/provider.dart';
+import 'package:challengeaccepted/providers/challenge_provider.dart';
 import 'package:challengeaccepted/widgets/lists/challenge_selection_list.dart';
 import 'package:challengeaccepted/widgets/common/empty_state.dart';
-import 'package:challengeaccepted/widgets/common/loading_indicator.dart';
 import 'package:challengeaccepted/pages/multi_challenge_daily_log_page.dart';
 
 class DailyActivitySelectorPage extends StatefulWidget {
@@ -57,37 +53,23 @@ class _DailyActivitySelectorPageState extends State<DailyActivitySelectorPage> {
           ),
         ],
       ),
-      body: Query(
-        options: QueryOptions(
-          document: gql(ChallengesQueries.getActiveChallenges),
-          fetchPolicy: FetchPolicy.cacheAndNetwork,
-        ),
-        builder: (result, {refetch, fetchMore}) {
-          if (result.isLoading && result.data == null) {
-            return const LoadingIndicator();
+      body: Consumer<ChallengeProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoading && provider.challengesNeedingLog.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
           }
 
-          if (result.hasException) {
-            return Center(child: Text('Error: ${result.exception.toString()}'));
+          if (provider.error != null) {
+            return Center(child: Text('Error: ${provider.error}'));
           }
 
-          final currentUser = FirebaseAuth.instance.currentUser;
-          if (currentUser == null) {
-            return const EmptyState(
-              icon: Icons.account_circle,
-              title: 'Not authenticated',
-              message: 'Please log in to continue',
-            );
-          }
+          final challengesNeedingLog = provider.challengesNeedingLog;
 
-          final challenges = result.data?['challenges'] as List<dynamic>? ?? [];
-          final activeChallenges = _filterActiveChallenges(challenges);
-
-          if (activeChallenges.isEmpty) {
+          if (challengesNeedingLog.isEmpty) {
             return EmptyState(
-              icon: Icons.info_outline,
-              title: 'No challenges need logging',
-              message: 'All your challenges have been logged for today!',
+              icon: Icons.check_circle,
+              title: 'All done for today!',
+              message: 'You\'ve logged all your challenges. Great job! 🎉',
               actionLabel: 'Go Back',
               onAction: () => Navigator.of(context).pop(),
             );
@@ -95,14 +77,16 @@ class _DailyActivitySelectorPageState extends State<DailyActivitySelectorPage> {
 
           return Column(
             children: [
-              _buildInfoHeader(),
+              _buildInfoHeader(challengesNeedingLog.length),
               Expanded(
                 child: ChallengeSelectionList(
-                  challenges: activeChallenges,
+                  challenges: challengesNeedingLog,
                   selectedChallengeIds: selectedChallengeIds,
                   onChallengeToggled: _onChallengeToggled,
                 ),
               ),
+              if (selectedChallengeIds.isNotEmpty)
+                _buildBottomBar(),
             ],
           );
         },
@@ -110,7 +94,7 @@ class _DailyActivitySelectorPageState extends State<DailyActivitySelectorPage> {
     );
   }
 
-  Widget _buildInfoHeader() {
+  Widget _buildInfoHeader(int count) {
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.blue.shade50,
@@ -120,54 +104,52 @@ class _DailyActivitySelectorPageState extends State<DailyActivitySelectorPage> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Select the challenges you want to log activity for',
-              style: TextStyle(color: Colors.blue.shade700),
+              '$count challenge${count != 1 ? 's' : ''} need${count == 1 ? 's' : ''} logging today',
+              style: TextStyle(
+                color: Colors.blue.shade700,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
       ),
     );
   }
-
-  List<dynamic> _filterActiveChallenges(List<dynamic> challenges) {
-    return challenges.where((challenge) {
-      if (challenge['status'] == 'expired') return false;
-      
-      final participants = challenge['participants'] as List<dynamic>?;
-      if (participants == null) return false;
-      
-      try {
-        // Find the current user's participant record
-        final currentUserParticipant = participants.firstWhere(
-          (p) => p['isCurrentUser'] == true,
-        );
-        
-        // Check if the current user has accepted
-        if (currentUserParticipant['status'] != 'accepted') return false;
-        
-        // Check if user has already logged today
-        final todayStatus = challenge['todayStatus'] as Map<String, dynamic>?;
-        if (todayStatus != null) {
-          final participantsStatus = todayStatus['participantsStatus'] as List?;
-          if (participantsStatus != null) {
-            try {
-              final currentUserStatus = participantsStatus.firstWhere(
-                (status) => status['participant']['isCurrentUser'] == true,
-              );
-              final hasLoggedToday = currentUserStatus['hasLoggedToday'] as bool? ?? false;
-              // Only show challenges that haven't been logged yet
-              return !hasLoggedToday;
-            } catch (_) {
-              // Current user not found in today's status, show the challenge
-              return true;
-            }
-          }
-        }
-        
-        return true;
-      } catch (_) {
-        return false;
-      }
-    }).toList();
+  
+  Widget _buildBottomBar() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            offset: const Offset(0, -2),
+            blurRadius: 4,
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _navigateToLogging,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              'Log ${selectedChallengeIds.length} Challenge${selectedChallengeIds.length != 1 ? 's' : ''}',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

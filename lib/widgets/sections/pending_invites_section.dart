@@ -1,9 +1,8 @@
-// lib/widgets/sections/pending_invites_section.dart
-
-import 'package:challengeaccepted/utils/graphql_helpers.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
-import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
+import 'package:challengeaccepted/providers/challenge_provider.dart';
+import 'package:challengeaccepted/providers/user_activity_provider.dart';
 import 'package:challengeaccepted/graphql/mutations/challenge_mutations.dart';
 import 'package:challengeaccepted/widgets/dialogs/rest_day_picker_dialog.dart';
 import 'package:challengeaccepted/widgets/dialogs/decline_challenge_dialog.dart';
@@ -21,29 +20,38 @@ class PendingInvitesSection extends StatelessWidget {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Query(
-          options: QueryOptions(
-            document: gql(ChallengesQueries.pendingChallenges),
-            fetchPolicy: FetchPolicy.cacheAndNetwork,
-          ),
-          builder: (result, {refetch, fetchMore}) {
-            if (result.isLoading && result.data == null) {
+        Consumer<ChallengeProvider>(
+          builder: (context, provider, child) {
+            if (provider.isLoading && provider.pendingChallenges.isEmpty) {
               return const Center(child: CircularProgressIndicator());
             }
             
-            if (result.hasException) {
-              return Text("Error: ${result.exception.toString()}");
+            if (provider.error != null) {
+              return Text("Error: ${provider.error}");
             }
 
-            final challenges = result.data?['pendingChallenges'] as List<dynamic>? ?? [];
-
-            if (challenges.isEmpty) {
-              return const Text("No pending invites 🎉");
+            if (provider.pendingChallenges.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  "No pending invites 🎉",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              );
             }
 
-            return _PendingChallengesList(
-              challenges: challenges,
-              onRefetch: refetch,
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: provider.pendingChallenges.length,
+              itemBuilder: (context, index) {
+                final challenge = provider.pendingChallenges[index];
+                return _PendingChallengeCard(challenge: challenge);
+              },
             );
           },
         ),
@@ -52,39 +60,11 @@ class PendingInvitesSection extends StatelessWidget {
   }
 }
 
-class _PendingChallengesList extends StatelessWidget {
-  final List<dynamic> challenges;
-  final VoidCallback? onRefetch;
-
-  const _PendingChallengesList({
-    required this.challenges,
-    this.onRefetch,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: challenges.length,
-      itemBuilder: (context, index) {
-        final challenge = challenges[index] as Map<String, dynamic>;
-        return _PendingChallengeCard(
-          challenge: challenge,
-          onRefetch: onRefetch,
-        );
-      },
-    );
-  }
-}
-
 class _PendingChallengeCard extends StatelessWidget {
   final Map<String, dynamic> challenge;
-  final VoidCallback? onRefetch;
 
   const _PendingChallengeCard({
     required this.challenge,
-    this.onRefetch,
   });
 
   static const _sportIcons = {
@@ -171,7 +151,38 @@ class _PendingChallengeCard extends StatelessWidget {
     if (restDays == null || !context.mounted) return;
 
     final client = GraphQLProvider.of(context).value;
-    await _acceptChallenge(context, client, restDays);
+    
+    final result = await client.mutate(
+      MutationOptions(
+        document: gql(ChallengeMutations.acceptChallenge),
+        variables: {
+          'challengeId': challenge['id'],
+          'restDays': restDays,
+        },
+      ),
+    );
+
+    if (!context.mounted) return;
+
+    if (result.hasException) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error: ${result.exception?.graphqlErrors.first.message}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Challenge accepted! Good luck! 🔥'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+      // Refresh providers
+      await context.read<ChallengeProvider>().refresh();
+      await context.read<UserActivityProvider>().refresh();
+    }
   }
 
   Future<void> _handleDecline(BuildContext context) async {
@@ -185,54 +196,7 @@ class _PendingChallengeCard extends StatelessWidget {
     if (reason == null || !context.mounted) return;
 
     final client = GraphQLProvider.of(context).value;
-    await _declineChallenge(context, client, reason);
-  }
-
-  Future<void> _acceptChallenge(
-  BuildContext context,
-  GraphQLClient client,
-  int restDays,
-) async {
-  final result = await client.mutate(
-    MutationOptions(
-      document: gql(ChallengeMutations.acceptChallenge),
-      variables: {
-        'challengeId': challenge['id'],
-        'restDays': restDays,
-      },
-    ),
-  );
-
-  if (!context.mounted) return;
-
-  if (result.hasException) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('❌ Error: ${result.exception?.graphqlErrors.first.message}'),
-        backgroundColor: Colors.red,
-      ),
-    );
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('✅ Challenge accepted! Good luck! 🔥'),
-        backgroundColor: Colors.green,
-      ),
-    );
     
-    // Refresh relevant queries
-    await GraphQLHelpers.refetchAfterChallengeUpdate(client);
-    
-    // Call the original refetch if available
-    onRefetch?.call();
-  }
-}
-
-  Future<void> _declineChallenge(
-    BuildContext context,
-    GraphQLClient client,
-    String reason,
-  ) async {
     final result = await client.mutate(
       MutationOptions(
         document: gql(ChallengeMutations.declineChallenge),
@@ -259,7 +223,9 @@ class _PendingChallengeCard extends StatelessWidget {
           backgroundColor: Colors.orange,
         ),
       );
-      onRefetch?.call();
+      
+      // Refresh providers
+      await context.read<ChallengeProvider>().fetchPendingChallenges();
     }
   }
 }

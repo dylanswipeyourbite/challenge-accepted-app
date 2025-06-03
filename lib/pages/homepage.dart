@@ -1,15 +1,15 @@
 import 'package:challengeaccepted/pages/settings_page.dart';
+import 'package:challengeaccepted/providers/challenge_provider.dart';
+import 'package:challengeaccepted/providers/user_activity_provider.dart';
 import 'package:challengeaccepted/widgets/sections/quick_stats_section.dart';
 import 'package:challengeaccepted/widgets/sections/quick_actions_section.dart';
 import 'package:challengeaccepted/widgets/sections/active_challenges_section.dart';
 import 'package:challengeaccepted/widgets/sections/pending_invites_section.dart';
 import 'package:challengeaccepted/widgets/sections/timeline_feed_section.dart';
+import 'package:challengeaccepted/providers/app_providers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:graphql_flutter/graphql_flutter.dart';
-import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
-import 'package:challengeaccepted/graphql/queries/user_queries.dart';
-import 'package:challengeaccepted/graphql/queries/media_queries.dart';
+import 'package:provider/provider.dart';
 
 class HomeDashboardPage extends StatefulWidget {
   const HomeDashboardPage({super.key});
@@ -34,28 +34,10 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with WidgetsBindi
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _refreshAllData();
+      // Use providers to refresh
+      context.read<ChallengeProvider>().refresh();
+      context.read<UserActivityProvider>().refresh();
     }
-  }
-
-  Future<void> _refreshAllData() async {
-    final client = GraphQLProvider.of(context).value;
-    
-    // Refresh all relevant queries with network-only policy
-    await Future.wait([
-      client.query(QueryOptions(
-        document: gql(ChallengesQueries.getActiveChallenges),
-        fetchPolicy: FetchPolicy.networkOnly,
-      )),
-      client.query(QueryOptions(
-        document: gql(UserQueries.getUserStats),
-        fetchPolicy: FetchPolicy.networkOnly,
-      )),
-      client.query(QueryOptions(
-        document: gql(MediaQueries.getTimelineMedia),
-        fetchPolicy: FetchPolicy.networkOnly,
-      )),
-    ]);
   }
 
   @override
@@ -82,8 +64,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with WidgetsBindi
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshAllData,
+      body: ProviderRefreshIndicator(
         child: const SingleChildScrollView(
           physics: AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.all(16.0),
