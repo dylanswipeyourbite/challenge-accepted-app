@@ -59,6 +59,7 @@ class IntegratedDailyLogPage extends StatelessWidget {
             DailyLogForm(
               challengeId: challengeId,
               canTakeRestDay: usedRestDays < allowedRestDays,
+              challengeTitle: challengeTitle, // Add this line
               onComplete: () {
                 // Return true to indicate successful logging
                 Navigator.of(context).pop(true);

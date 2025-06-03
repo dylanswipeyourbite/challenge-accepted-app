@@ -1,22 +1,26 @@
+// lib/widgets/forms/daily_log_form.dart
+// Key changes to integrate the success dialog
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/utils/graphql_helpers.dart';
 import 'package:challengeaccepted/widgets/forms/activity_type_selector.dart';
 import 'package:challengeaccepted/widgets/forms/media_upload_section.dart';
-import 'package:provider/provider.dart';
-import 'package:challengeaccepted/providers/refresh_provider.dart';
+import 'package:challengeaccepted/widgets/dialogs/activity_success_dialog.dart';
 
 class DailyLogForm extends StatefulWidget {
   final String challengeId;
   final bool canTakeRestDay;
   final VoidCallback onComplete;
+  final String? challengeTitle; // Add this parameter
 
   const DailyLogForm({
     super.key,
     required this.challengeId,
     required this.canTakeRestDay,
     required this.onComplete,
+    this.challengeTitle,
   });
 
   @override
@@ -107,54 +111,37 @@ class _DailyLogFormState extends State<DailyLogForm> {
     return Mutation(
       options: MutationOptions(
         document: gql(hasMedia ? logActivityWithMedia : logActivityOnly),
-        // Then update the onCompleted callback in the Mutation:
-      onCompleted: (data) async {
-        if (data == null) return;
-        
-        final points = data['logDailyActivity']?['points'] ?? 0;
-        final newStreak = data['logDailyActivity']?['participant']?['dailyStreak'] ?? 0;
-        
-        // Haptic feedback
-        HapticFeedback.mediumImpact();
-        
-        // Show success message
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text('Logged! +$points points'),
-                  if (newStreak > 0) ...[
-                    const SizedBox(width: 8),
-                    Text('🔥 $newStreak day streak!'),
-                  ],
-                ],
+        onCompleted: (data) async {
+          if (data == null) return;
+          
+          final points = data['logDailyActivity']?['points'] ?? 0;
+          final newStreak = data['logDailyActivity']?['participant']?['dailyStreak'] ?? 0;
+          
+          // Haptic feedback
+          HapticFeedback.mediumImpact();
+          
+          // Show the new motivational success dialog
+          if (context.mounted) {
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => ActivitySuccessDialog(
+                pointsEarned: points,
+                newStreak: newStreak,
+                challengeTitle: widget.challengeTitle ?? 'Challenge',
+                onComplete: () {
+                  // Refresh affected queries
+                  final client = GraphQLProvider.of(context).value;
+                  GraphQLHelpers.refetchAfterPost(client, widget.challengeId).then((_) {
+                    if (context.mounted) {
+                      widget.onComplete();
+                    }
+                  });
+                },
               ),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-        
-        // Refresh affected queries
-        final client = GraphQLProvider.of(context).value;
-        await GraphQLHelpers.refetchAfterPost(client, widget.challengeId);
-        
-        // Notify homepage to refresh
-        if (context.mounted) {
-          context.read<RefreshProvider>().refreshHomePage();
-        }
-        
-        // Small delay for animation
-        await Future.delayed(const Duration(milliseconds: 300));
-        
-        if (context.mounted) {
-          widget.onComplete();
-        }
-      },
+            );
+          }
+        },
         onError: (error) {
           _handleError(error);
         },
@@ -285,11 +272,6 @@ class _DailyLogFormState extends State<DailyLogForm> {
         'caption': _captionController.text.isNotEmpty ? _captionController.text : null,
       };
     }
-
-    print('🚀 Submitting log with variables:');
-    print('  - Challenge ID: ${widget.challengeId}');
-    print('  - Log type: $_selectedLogType');
-    print('  - Has media: ${_mediaUrl != null}');
 
     runMutation(variables);
   }
