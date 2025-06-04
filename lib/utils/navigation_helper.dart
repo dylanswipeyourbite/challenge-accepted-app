@@ -14,7 +14,7 @@ class NavigationHelper {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ProviderAwareChallengeDetailPage(challengeId: challengeId),
+        builder: (_) => ChallengeDetailPage(challengeId: challengeId),
       ),
     );
     

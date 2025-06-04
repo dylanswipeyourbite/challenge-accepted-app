@@ -1,21 +1,16 @@
-import 'package:challengeaccepted/widgets/buttons/comment_button.dart';
+// lib/widgets/common/provider_aware_post_interaction_bar.dart
 import 'package:challengeaccepted/widgets/buttons/cheer_button.dart';
+import 'package:challengeaccepted/widgets/buttons/comment_button.dart';
 import 'package:flutter/material.dart';
+import 'package:challengeaccepted/models/media.dart';
+
 
 class PostInteractionBar extends StatelessWidget {
-  final String mediaId;
-  final List cheers;
-  final List comments;
-  final bool hasCheered; 
-  final VoidCallback? onRefetch;
+  final Media media;
 
   const PostInteractionBar({
     super.key,
-    required this.mediaId,
-    required this.cheers,
-    required this.comments,
-    required this.hasCheered,
-    required this.onRefetch,
+    required this.media,
   });
 
   @override
@@ -23,17 +18,8 @@ class PostInteractionBar extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        CheerButton(
-          mediaId: mediaId,
-          cheers: cheers, 
-          hasCheered: hasCheered,
-          onRefetch: onRefetch,
-        ),
-        CommentButton(
-          mediaId: mediaId,
-          comments: comments,
-          onRefetch: onRefetch,
-        ),
+        CheerButton(media: media),
+        CommentButton(media: media),
       ],
     );
   }

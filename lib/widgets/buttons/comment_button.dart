@@ -1,34 +1,20 @@
+// lib/widgets/buttons/provider_aware_comment_button.dart
 import 'package:challengeaccepted/widgets/common/comment_section.dart';
 import 'package:flutter/material.dart';
+import 'package:challengeaccepted/models/media.dart';
 
 class CommentButton extends StatelessWidget {
-  final String mediaId;
-  final List comments;
-  final VoidCallback? onRefetch; 
-  
+  final Media media;
+
   const CommentButton({
     super.key,
-    required this.mediaId,
-    required this.comments,
-    required this.onRefetch,
+    required this.media,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          builder: (_) => SizedBox(
-            height: MediaQuery.of(context).size.height * 0.75,
-            child: CommentSection(
-              mediaId: mediaId,
-              comments: comments, onRefetch: onRefetch,
-            ),
-          ),
-        );
-      },
+      onTap: () => _showCommentSection(context),
       child: Row(
         children: [
           TweenAnimationBuilder<double>(
@@ -43,10 +29,29 @@ class CommentButton extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            '${comments.length} comment${comments.length == 1 ? '' : 's'}',
+            '${media.commentCount} comment${media.commentCount == 1 ? '' : 's'}',
             style: const TextStyle(color: Colors.grey),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showCommentSection(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => CommentSection(
+          media: media,
+          scrollController: scrollController,
+        ),
       ),
     );
   }

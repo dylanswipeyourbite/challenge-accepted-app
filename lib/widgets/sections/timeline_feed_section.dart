@@ -1,11 +1,9 @@
 // lib/widgets/sections/timeline_feed_section.dart
-
+import 'package:challengeaccepted/widgets/cards/post_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/providers/user_activity_provider.dart';
-import 'package:challengeaccepted/widgets/cards/post_card.dart';
 import 'package:challengeaccepted/models/media.dart';
-import 'package:challengeaccepted/models/comment.dart';
 
 class TimelineFeedSection extends StatelessWidget {
   const TimelineFeedSection({super.key});
@@ -64,27 +62,16 @@ class TimelineFeedSection extends StatelessWidget {
       return const _EmptyTimeline();
     }
 
-    // Timeline list
-    return _TimelineList(
-      mediaList: provider.timelineMedia,
-      onMediaInteraction: (String mediaId, {bool? hasCheered, List<Comment>? comments}) {
-        provider.updateMediaInteraction(
-          mediaId,
-          hasCheered: hasCheered,
-          comments: comments,
-        );
-      },
-    );
+    // Timeline list with provider-aware PostCards
+    return _TimelineList(mediaList: provider.timelineMedia);
   }
 }
 
 class _TimelineList extends StatelessWidget {
   final List<Media> mediaList;
-  final Function(String mediaId, {bool? hasCheered, List<Comment>? comments}) onMediaInteraction;
 
   const _TimelineList({
     required this.mediaList,
-    required this.onMediaInteraction,
   });
 
   @override
@@ -95,27 +82,13 @@ class _TimelineList extends StatelessWidget {
       itemCount: mediaList.length,
       itemBuilder: (context, index) {
         final media = mediaList[index];
-        return _buildPostCard(media);
+        
+        // Use the new provider-aware PostCard
+        return PostCard(
+          media: media,
+          dailyLog: media.dailyLog,
+        );
       },
-    );
-  }
-
-  Widget _buildPostCard(Media media) {
-    return PostCard(
-      mediaId: media.id,
-      imageUrl: media.url,
-      displayName: media.user.displayName,
-      avatarUrl: media.user.avatarUrl ?? '',
-      cheers: media.cheers,
-      comments: media.comments.map((c) => c.toJson()).toList(), // Convert to List<dynamic> for now
-      hasCheered: media.hasCheered,
-      onRefetch: () {
-        // Update is handled by provider
-        onMediaInteraction(media.id);
-      },
-      caption: media.caption,
-      uploadedAt: media.uploadedAt,
-      dailyLog: media.dailyLog,
     );
   }
 }

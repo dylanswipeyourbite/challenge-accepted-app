@@ -1,3 +1,4 @@
+// lib/widgets/provider_aware/today_progress_section.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
@@ -19,12 +20,12 @@ class TodayProgressSection extends StatelessWidget {
         final challenge = provider.getChallengeById(challengeId);
         if (challenge == null) return const SizedBox.shrink();
 
-        final todayStatus = challenge['todayStatus'] as Map<String, dynamic>?;
+        final todayStatus = challenge.todayStatus;
         final hasLoggedToday = provider.todayLogStatus[challengeId] ?? false;
         
-        final loggedCount = todayStatus?['participantsLoggedCount'] as int? ?? 0;
-        final totalCount = todayStatus?['totalParticipants'] as int? ?? 0;
-        final progress = totalCount > 0 ? loggedCount / totalCount : 0.0;
+        final loggedCount = todayStatus?.participantsLoggedCount ?? 0;
+        final totalCount = todayStatus?.totalParticipants ?? 0;
+        final progress = todayStatus?.progressPercentage ?? 0.0;
 
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16),

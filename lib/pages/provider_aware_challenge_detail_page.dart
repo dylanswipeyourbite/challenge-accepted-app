@@ -1,7 +1,8 @@
+// lib/pages/provider_aware_challenge_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:challengeaccepted/models/challenge.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
-import 'package:challengeaccepted/providers/user_activity_provider.dart';
 import 'package:challengeaccepted/utils/navigation_helper.dart';
 import 'package:challengeaccepted/widgets/provider_aware/challenge_streak_hero.dart';
 import 'package:challengeaccepted/widgets/provider_aware/today_progress_section.dart';
@@ -9,10 +10,10 @@ import 'package:challengeaccepted/widgets/provider_aware/participants_status_sec
 import 'package:challengeaccepted/widgets/provider_aware/leaderboard_section.dart';
 import 'package:challengeaccepted/widgets/provider_aware/challenge_media_feed.dart';
 
-class ProviderAwareChallengeDetailPage extends StatelessWidget {
+class ChallengeDetailPage extends StatelessWidget {
   final String challengeId;
 
-  const ProviderAwareChallengeDetailPage({
+  const ChallengeDetailPage({
     super.key,
     required this.challengeId,
   });
@@ -94,14 +95,14 @@ class ProviderAwareChallengeDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSliverAppBar(Map<String, dynamic> challenge) {
+  Widget _buildSliverAppBar(Challenge challenge) {
     return SliverAppBar(
       expandedHeight: 120,
       pinned: true,
-      backgroundColor: _getSportColor(challenge['sport'] as String),
+      backgroundColor: challenge.sport.color,
       flexibleSpace: FlexibleSpaceBar(
         title: Text(
-          challenge['title'] as String,
+          challenge.title,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -113,8 +114,8 @@ class ProviderAwareChallengeDetailPage extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                _getSportColor(challenge['sport'] as String),
-                _getSportColor(challenge['sport'] as String).withOpacity(0.7),
+                challenge.sport.color,
+                challenge.sport.color.withOpacity(0.7),
               ],
             ),
           ),
@@ -128,13 +129,13 @@ class ProviderAwareChallengeDetailPage extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        _getSportIcon(challenge['sport'] as String),
+                        challenge.sport.icon,
                         color: Colors.white.withOpacity(0.8),
                         size: 20,
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        (challenge['sport'] as String).toUpperCase(),
+                        challenge.sport.value.toUpperCase(),
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.8),
                           fontSize: 14,
@@ -143,15 +144,13 @@ class ProviderAwareChallengeDetailPage extends StatelessWidget {
                       ),
                       const SizedBox(width: 16),
                       Icon(
-                        challenge['type'] == 'competitive' 
-                            ? Icons.emoji_events 
-                            : Icons.group,
+                        challenge.type.icon,
                         color: Colors.white.withOpacity(0.8),
                         size: 20,
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        (challenge['type'] as String).toUpperCase(),
+                        challenge.type.value.toUpperCase(),
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.8),
                           fontSize: 14,
@@ -167,31 +166,5 @@ class ProviderAwareChallengeDetailPage extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Color _getSportColor(String sport) {
-    switch (sport) {
-      case 'running':
-        return Colors.orange;
-      case 'cycling':
-        return Colors.blue;
-      case 'workout':
-        return Colors.purple;
-      default:
-        return Colors.green;
-    }
-  }
-
-  IconData _getSportIcon(String sport) {
-    switch (sport) {
-      case 'running':
-        return Icons.directions_run;
-      case 'cycling':
-        return Icons.directions_bike;
-      case 'workout':
-        return Icons.fitness_center;
-      default:
-        return Icons.sports;
-    }
   }
 }

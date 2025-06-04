@@ -1,7 +1,9 @@
+// lib/widgets/provider_aware/challenge_media_feed.dart
+import 'package:challengeaccepted/widgets/cards/post_card.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/media_queries.dart';
-import 'package:challengeaccepted/widgets/cards/post_card.dart';
+import 'package:challengeaccepted/models/media.dart';
 
 class ChallengeMediaFeed extends StatelessWidget {
   final String challengeId;
@@ -26,6 +28,21 @@ class ChallengeMediaFeed extends StatelessWidget {
           );
         }
 
+        if (result.hasException) {
+          return SliverToBoxAdapter(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Error loading media: ${result.exception}',
+                  style: TextStyle(color: Colors.red.shade600),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          );
+        }
+
         final mediaList = result.data?['mediaByChallenge'] as List? ?? [];
         
         if (mediaList.isEmpty) {
@@ -35,7 +52,8 @@ class ChallengeMediaFeed extends StatelessWidget {
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.photo_library_outlined, 
+                    Icon(
+                      Icons.photo_library_outlined, 
                       size: 48, 
                       color: Colors.grey.shade400,
                     ),
@@ -45,6 +63,14 @@ class ChallengeMediaFeed extends StatelessWidget {
                       style: TextStyle(
                         color: Colors.grey.shade600,
                         fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Be the first to share!',
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 14,
                       ),
                     ),
                   ],
@@ -59,37 +85,38 @@ class ChallengeMediaFeed extends StatelessWidget {
             (context, index) {
               if (index >= mediaList.length) return null;
               
-              final media = mediaList[index] as Map<String, dynamic>;
-              return _buildPostCard(media, refetch);
+              try {
+                final mediaData = mediaList[index] as Map<String, dynamic>;
+                final media = Media.fromJson(mediaData);
+                
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: PostCard(
+                    media: media,
+                    dailyLog: media.dailyLog,
+                  ),
+                );
+              } catch (e) {
+                // Handle parsing errors gracefully
+                return Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Text(
+                    'Error loading post: $e',
+                    style: TextStyle(color: Colors.red.shade700),
+                  ),
+                );
+              }
             },
             childCount: mediaList.length > 5 ? 5 : mediaList.length,
           ),
         );
       },
     );
-  }
-
-  Widget _buildPostCard(Map<String, dynamic> media, VoidCallback? onRefetch) {
-    final user = media['user'] as Map<String, dynamic>?;
-    final cheers = media['cheers'] as List<dynamic>? ?? [];
-    final comments = media['comments'] as List<dynamic>? ?? [];
-    
-    return PostCard(
-      mediaId: media['id'] as String,
-      imageUrl: media['url'] as String,
-      displayName: user?['displayName'] as String? ?? 'Unknown',
-      avatarUrl: user?['avatarUrl'] as String? ?? '',
-      cheers: cheers,
-      comments: comments,
-      hasCheered: media['hasCheered'] as bool? ?? false,
-      onRefetch: onRefetch,
-      caption: media['caption'] as String?,
-      uploadedAt: _parseDateTime(media['uploadedAt']),
-    );
-  }
-
-  DateTime? _parseDateTime(dynamic dateStr) {
-    if (dateStr == null) return null;
-    return DateTime.tryParse(dateStr as String);
   }
 }

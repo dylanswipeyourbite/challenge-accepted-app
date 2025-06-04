@@ -1,6 +1,9 @@
+// lib/widgets/provider_aware/leaderboard_section.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
+import 'package:challengeaccepted/models/participant.dart';
+import 'package:challengeaccepted/models/challenge_enums.dart';
 
 class LeaderboardSection extends StatelessWidget {
   final String challengeId;
@@ -17,18 +20,14 @@ class LeaderboardSection extends StatelessWidget {
         final challenge = provider.getChallengeById(challengeId);
         if (challenge == null) return const SizedBox.shrink();
 
-        final participants = challenge['participants'] as List? ?? [];
-        final challengeType = challenge['type'] as String? ?? '';
+        final participants = challenge.participants;
+        final challengeType = challenge.type;
         
         // Filter and sort participants by total points
         final rankedParticipants = participants
-            .where((p) => p['status'] == 'accepted')
+            .where((p) => p.status == ParticipantStatus.accepted)
             .toList()
-          ..sort((a, b) {
-            final pointsA = a['totalPoints'] as int? ?? 0;
-            final pointsB = b['totalPoints'] as int? ?? 0;
-            return pointsB.compareTo(pointsA); // Descending order
-          });
+          ..sort((a, b) => b.totalPoints.compareTo(a.totalPoints));
 
         if (rankedParticipants.isEmpty) {
           return const SizedBox.shrink();
@@ -51,7 +50,7 @@ class LeaderboardSection extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  if (challengeType == 'competitive')
+                  if (challengeType == ChallengeType.competitive)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -72,7 +71,7 @@ class LeaderboardSection extends StatelessWidget {
               const SizedBox(height: 12),
               ...rankedParticipants.asMap().entries.map((entry) {
                 final index = entry.key;
-                final participant = entry.value as Map<String, dynamic>;
+                final participant = entry.value;
                 return _LeaderboardTile(
                   rank: index + 1,
                   participant: participant,
@@ -88,7 +87,7 @@ class LeaderboardSection extends StatelessWidget {
 
 class _LeaderboardTile extends StatelessWidget {
   final int rank;
-  final Map<String, dynamic> participant;
+  final Participant participant;
 
   const _LeaderboardTile({
     required this.rank,
@@ -97,10 +96,10 @@ class _LeaderboardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = participant['user'] as Map<String, dynamic>?;
-    final totalPoints = participant['totalPoints'] as int? ?? 0;
-    final dailyStreak = participant['dailyStreak'] as int? ?? 0;
-    final isCurrentUser = participant['isCurrentUser'] as bool? ?? false;
+    final user = participant.user;
+    final totalPoints = participant.totalPoints;
+    final dailyStreak = participant.dailyStreak;
+    final isCurrentUser = participant.isCurrentUser;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -153,12 +152,12 @@ class _LeaderboardTile extends StatelessWidget {
           const SizedBox(width: 12),
           // Avatar
           CircleAvatar(
-            backgroundImage: user?['avatarUrl'] != null
-                ? NetworkImage(user!['avatarUrl'] as String)
+            backgroundImage: user.avatarUrl != null
+                ? NetworkImage(user.avatarUrl!)
                 : null,
             backgroundColor: Colors.grey.shade300,
             radius: 20,
-            child: user?['avatarUrl'] == null
+            child: user.avatarUrl == null
                 ? const Icon(Icons.person, color: Colors.grey)
                 : null,
           ),
@@ -171,7 +170,7 @@ class _LeaderboardTile extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      user?['displayName'] as String? ?? 'Unknown',
+                      user.displayName,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                       ),

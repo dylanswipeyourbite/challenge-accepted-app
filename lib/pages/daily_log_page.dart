@@ -1,3 +1,4 @@
+import 'package:challengeaccepted/models/participant.dart';
 import 'package:challengeaccepted/widgets/forms/daily_log_form.dart';
 import 'package:flutter/material.dart';
 import 'package:challengeaccepted/widgets/cards/streak_display_card.dart';
@@ -6,7 +7,7 @@ import 'package:challengeaccepted/widgets/cards/rest_day_info_card.dart';
 class IntegratedDailyLogPage extends StatelessWidget {
   final String challengeId;
   final String challengeTitle;
-  final Map<String, dynamic> userParticipant;
+  final Participant userParticipant;
   final bool isMultiChallenge;
   final String? challengeProgress;
   final VoidCallback? onComplete;
@@ -21,9 +22,9 @@ class IntegratedDailyLogPage extends StatelessWidget {
     this.onComplete,
   });
 
-  int get allowedRestDays => userParticipant['restDays'] as int? ?? 1;
-  int get usedRestDays => userParticipant['weeklyRestDaysUsed'] as int? ?? 0;
-  int get currentStreak => userParticipant['dailyStreak'] as int? ?? 0;
+  int get allowedRestDays => userParticipant.restDays ?? 1;
+  int get usedRestDays => userParticipant.weeklyRestDaysUsed;
+  int get currentStreak => userParticipant.dailyStreak;
 
   @override
   Widget build(BuildContext context) {

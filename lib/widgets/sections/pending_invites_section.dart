@@ -1,7 +1,10 @@
-import 'package:challengeaccepted/models/challenge.dart';
+// lib/widgets/sections/pending_invites_section.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:challengeaccepted/models/challenge.dart';
+// import 'package:challengeaccepted/models/challenge_enums.dart';
+// import 'package:challengeaccepted/models/user.dart' as AppUser;
 import 'package:challengeaccepted/providers/challenge_provider.dart';
 import 'package:challengeaccepted/providers/user_activity_provider.dart';
 import 'package:challengeaccepted/graphql/mutations/challenge_mutations.dart';
@@ -68,53 +71,44 @@ class _PendingChallengeCard extends StatelessWidget {
     required this.challenge,
   });
 
-  static const _sportIcons = {
-    'running': Icons.directions_run,
-    'cycling': Icons.directions_bike,
-    'workout': Icons.fitness_center,
-  };
-
   @override
   Widget build(BuildContext context) {
-    final sport = challenge.sport;
-    final createdBy = challenge.createdBy;
-    
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: Colors.blue.shade100,
           child: Icon(
-            _sportIcons[sport] ?? Icons.sports,
+            challenge.sport.icon,
             color: Colors.blue.shade700,
           ),
         ),
         title: Text(
-          challenge['title'] as String,
+          challenge.title,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        subtitle: _buildSubtitle(createdBy),
+        subtitle: _buildSubtitle(),
         isThreeLine: true,
         trailing: _buildActions(context),
       ),
     );
   }
 
-  Widget _buildSubtitle(Map<String, dynamic>? createdBy) {
+  Widget _buildSubtitle() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "From: ${createdBy.displayName}",
+          "From: ${challenge.createdBy.displayName}",
           style: TextStyle(color: Colors.grey.shade600),
         ),
         Text(
-          "Type: ${challenge.type} • Ends: ${(challenge['timeLimit'] as String).split('T')[0]}",
+          "Type: ${challenge.type.value} • Ends: ${_formatDate(challenge.timeLimit)}",
           style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
         ),
-        if (challenge['wager'] != null && (challenge['wager'] as String).isNotEmpty)
+        if (challenge.wager != null && challenge.wager!.isNotEmpty)
           Text(
-            "Wager: ${challenge.wager ?? ''}",
+            "Wager: ${challenge.wager}",
             style: const TextStyle(
               color: Colors.orange,
               fontSize: 12,
@@ -123,6 +117,10 @@ class _PendingChallengeCard extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
 
   Widget _buildActions(BuildContext context) {
@@ -157,7 +155,7 @@ class _PendingChallengeCard extends StatelessWidget {
       MutationOptions(
         document: gql(ChallengeMutations.acceptChallenge),
         variables: {
-          'challengeId': challenge['id'],
+          'challengeId': challenge.id,
           'restDays': restDays,
         },
       ),
@@ -190,7 +188,7 @@ class _PendingChallengeCard extends StatelessWidget {
     final reason = await showDialog<String>(
       context: context,
       builder: (context) => DeclineChallengeDialog(
-        challengeTitle: challenge['title'] as String,
+        challengeTitle: challenge.title,
       ),
     );
 
@@ -202,7 +200,7 @@ class _PendingChallengeCard extends StatelessWidget {
       MutationOptions(
         document: gql(ChallengeMutations.declineChallenge),
         variables: {
-          'challengeId': challenge['id'],
+          'challengeId': challenge.id,
           'reason': reason.isNotEmpty ? reason : null,
         },
       ),

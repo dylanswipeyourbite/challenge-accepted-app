@@ -1,3 +1,4 @@
+// lib/widgets/provider_aware/challenge_streak_hero.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
@@ -17,9 +18,8 @@ class ChallengeStreakHero extends StatelessWidget {
         final challenge = provider.getChallengeById(challengeId);
         if (challenge == null) return const SizedBox.shrink();
 
-        final challengeStreak = challenge['challengeStreak'] as int? ?? 0;
-        final todayStatus = challenge['todayStatus'] as Map<String, dynamic>?;
-        final allLogged = todayStatus?['allParticipantsLogged'] as bool? ?? false;
+        final challengeStreak = challenge.challengeStreak;
+        final allLogged = challenge.todayStatus?.allParticipantsLogged ?? false;
         
         return Container(
           margin: const EdgeInsets.all(16),
@@ -46,7 +46,7 @@ class ChallengeStreakHero extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.local_fire_department,
                     color: Colors.white,
                     size: 32,
@@ -86,9 +86,9 @@ class ChallengeStreakHero extends StatelessWidget {
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
+                    children: [
                       Icon(Icons.check_circle, color: Colors.white, size: 16),
                       SizedBox(width: 4),
                       Text(

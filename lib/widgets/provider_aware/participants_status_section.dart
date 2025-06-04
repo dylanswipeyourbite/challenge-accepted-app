@@ -1,6 +1,8 @@
+// lib/widgets/provider_aware/participants_status_section.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
+import 'package:challengeaccepted/models/participant_daily_status.dart';
 
 class ParticipantsStatusSection extends StatelessWidget {
   final String challengeId;
@@ -17,8 +19,7 @@ class ParticipantsStatusSection extends StatelessWidget {
         final challenge = provider.getChallengeById(challengeId);
         if (challenge == null) return const SizedBox.shrink();
 
-        final todayStatus = challenge['todayStatus'] as Map<String, dynamic>?;
-        final participantsStatus = todayStatus?['participantsStatus'] as List? ?? [];
+        final participantsStatus = challenge.todayStatus?.participantsStatus ?? [];
         
         if (participantsStatus.isEmpty) return const SizedBox.shrink();
 
@@ -36,18 +37,7 @@ class ParticipantsStatusSection extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               ...participantsStatus.map((status) {
-                final participant = status['participant'] as Map<String, dynamic>;
-                final user = participant['user'] as Map<String, dynamic>?;
-                final hasLogged = status['hasLoggedToday'] as bool? ?? false;
-                final isCurrentUser = participant['isCurrentUser'] as bool? ?? false;
-                
-                return _ParticipantStatusTile(
-                  displayName: user?['displayName'] as String? ?? 'Unknown',
-                  avatarUrl: user?['avatarUrl'] as String?,
-                  hasLoggedToday: hasLogged,
-                  isCurrentUser: isCurrentUser,
-                  lastLogTime: _parseDateTime(status['lastLogTime']),
-                );
+                return _ParticipantStatusTile(status: status);
               }).toList(),
             ],
           ),
@@ -55,30 +45,23 @@ class ParticipantsStatusSection extends StatelessWidget {
       },
     );
   }
-
-  DateTime? _parseDateTime(dynamic dateStr) {
-    if (dateStr == null) return null;
-    return DateTime.tryParse(dateStr as String);
-  }
 }
 
 class _ParticipantStatusTile extends StatelessWidget {
-  final String displayName;
-  final String? avatarUrl;
-  final bool hasLoggedToday;
-  final bool isCurrentUser;
-  final DateTime? lastLogTime;
+  final ParticipantDailyStatus status;
 
   const _ParticipantStatusTile({
-    required this.displayName,
-    this.avatarUrl,
-    required this.hasLoggedToday,
-    required this.isCurrentUser,
-    this.lastLogTime,
+    required this.status,
   });
 
   @override
   Widget build(BuildContext context) {
+    final participant = status.participant;
+    final user = participant.user;
+    final hasLoggedToday = status.hasLoggedToday;
+    final isCurrentUser = participant.isCurrentUser;
+  
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -96,11 +79,11 @@ class _ParticipantStatusTile extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundImage: avatarUrl != null 
-                ? NetworkImage(avatarUrl!)
+            backgroundImage: user.avatarUrl != null 
+                ? NetworkImage(user.avatarUrl!)
                 : null,
             backgroundColor: Colors.grey.shade300,
-            child: avatarUrl == null 
+            child: user.avatarUrl == null 
                 ? const Icon(Icons.person, color: Colors.grey)
                 : null,
           ),
@@ -112,7 +95,7 @@ class _ParticipantStatusTile extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      displayName,
+                      user.displayName,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                       ),
@@ -143,7 +126,7 @@ class _ParticipantStatusTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   hasLoggedToday 
-                      ? 'Logged today ${_formatTime(lastLogTime)}'
+                      ? 'Logged today ${status.timeSinceLog}'
                       : 'Not logged yet',
                   style: TextStyle(
                     color: hasLoggedToday 
@@ -163,18 +146,5 @@ class _ParticipantStatusTile extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _formatTime(DateTime? time) {
-    if (time == null) return '';
-    final now = DateTime.now();
-    final difference = now.difference(time);
-    
-    if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    }
-    return '';
   }
 }
