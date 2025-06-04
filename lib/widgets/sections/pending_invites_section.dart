@@ -1,3 +1,4 @@
+import 'package:challengeaccepted/models/challenge.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
@@ -61,7 +62,7 @@ class PendingInvitesSection extends StatelessWidget {
 }
 
 class _PendingChallengeCard extends StatelessWidget {
-  final Map<String, dynamic> challenge;
+  final Challenge challenge;
 
   const _PendingChallengeCard({
     required this.challenge,
@@ -75,8 +76,8 @@ class _PendingChallengeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sport = challenge['sport'] as String? ?? 'workout';
-    final createdBy = challenge['createdBy'] as Map<String, dynamic>?;
+    final sport = challenge.sport;
+    final createdBy = challenge.createdBy;
     
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -104,16 +105,16 @@ class _PendingChallengeCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "From: ${createdBy?['displayName'] as String? ?? 'Unknown'}",
+          "From: ${createdBy.displayName}",
           style: TextStyle(color: Colors.grey.shade600),
         ),
         Text(
-          "Type: ${challenge['type']} • Ends: ${(challenge['timeLimit'] as String).split('T')[0]}",
+          "Type: ${challenge.type} • Ends: ${(challenge['timeLimit'] as String).split('T')[0]}",
           style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
         ),
         if (challenge['wager'] != null && (challenge['wager'] as String).isNotEmpty)
           Text(
-            "Wager: ${challenge['wager']}",
+            "Wager: ${challenge.wager ?? ''}",
             style: const TextStyle(
               color: Colors.orange,
               fontSize: 12,

@@ -1,3 +1,4 @@
+import 'package:challengeaccepted/models/challenge_enums.dart';
 import 'package:challengeaccepted/widgets/media/reusable_media_upload.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

@@ -1,11 +1,12 @@
+// lib/services/activity_logging_service.dart
+import 'package:challengeaccepted/models/challenge.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
 import 'package:challengeaccepted/providers/user_activity_provider.dart';
+import 'package:challengeaccepted/models/challenge_enums.dart';
+import 'package:challengeaccepted/models/media.dart';
 import 'package:provider/provider.dart';
-
-enum LogType { activity, rest }
-enum ActivityType { running, cycling, workout, other }
 
 class ActivityLogResult {
   final bool success;
@@ -54,6 +55,25 @@ class ActivityLoggingService {
         id
         url
         caption
+        type
+        uploadedAt
+        user {
+          id
+          displayName
+          avatarUrl
+        }
+        cheers
+        comments {
+          id
+          text
+          author {
+            id
+            displayName
+            avatarUrl
+          }
+          createdAt
+        }
+        hasCheered
       }
     }
   """;
@@ -68,7 +88,6 @@ class ActivityLoggingService {
     required this.userActivityProvider,
   });
 
-  // Factory constructor from BuildContext
   factory ActivityLoggingService.of(BuildContext context) {
     final client = GraphQLProvider.of(context).value;
     final challengeProvider = context.read<ChallengeProvider>();
@@ -101,10 +120,7 @@ class ActivityLoggingService {
           );
         }
 
-        final allowedRestDays = userParticipant['restDays'] as int? ?? 1;
-        final usedRestDays = userParticipant['weeklyRestDaysUsed'] as int? ?? 0;
-        
-        if (usedRestDays >= allowedRestDays) {
+        if (!userParticipant.canTakeRestDay) {
           return ActivityLogResult(
             success: false,
             error: 'No rest days remaining this week',
@@ -115,8 +131,8 @@ class ActivityLoggingService {
       // Prepare log input
       final logInput = {
         'challengeId': challengeId,
-        'type': type.name,
-        'activityType': type == LogType.activity ? activityType?.name : null,
+        'type': type.value,
+        'activityType': type == LogType.activity ? activityType?.value : null,
         'notes': notes ?? caption,
         'date': DateTime.now().toIso8601String(),
       };
@@ -174,7 +190,8 @@ class ActivityLoggingService {
 
       // If media was added, add to timeline
       if (hasMedia && result.data?['addMedia'] != null) {
-        final media = result.data!['addMedia'] as Map<String, dynamic>;
+        final mediaData = result.data!['addMedia'] as Map<String, dynamic>;
+        final media = Media.fromJson(mediaData);
         userActivityProvider.addMediaToTimeline(media);
       }
 
@@ -191,7 +208,6 @@ class ActivityLoggingService {
     }
   }
 
-  // Convenience method for logging multiple challenges
   Future<List<ActivityLogResult>> logMultipleChallenges({
     required List<String> challengeIds,
     required LogType type,
@@ -209,31 +225,22 @@ class ActivityLoggingService {
       );
       results.add(result);
       
-      // If one fails, stop processing
       if (!result.success) break;
     }
     
     return results;
   }
 
-  // Check if user can log for a challenge
   bool canLogForChallenge(String challengeId) {
     return !(challengeProvider.todayLogStatus[challengeId] ?? false);
   }
 
-  // Get challenges that need logging
-  List<Map<String, dynamic>> getChallengesNeedingLog() {
+  List<Challenge> getChallengesNeedingLog() {
     return challengeProvider.challengesNeedingLog;
   }
 
-  // Check if user can take rest day for a challenge
   bool canTakeRestDay(String challengeId) {
     final userParticipant = challengeProvider.getCurrentUserParticipant(challengeId);
-    if (userParticipant == null) return false;
-    
-    final allowedRestDays = userParticipant['restDays'] as int? ?? 1;
-    final usedRestDays = userParticipant['weeklyRestDaysUsed'] as int? ?? 0;
-    
-    return usedRestDays < allowedRestDays;
+    return userParticipant?.canTakeRestDay ?? false;
   }
 }

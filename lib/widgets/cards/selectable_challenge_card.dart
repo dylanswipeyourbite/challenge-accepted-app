@@ -1,10 +1,12 @@
 // lib/widgets/cards/selectable_challenge_card.dart
 
 import 'package:flutter/material.dart';
+import 'package:challengeaccepted/models/challenge.dart';
+import 'package:challengeaccepted/models/participant.dart';
 
 class SelectableChallengeCard extends StatelessWidget {
-  final Map<String, dynamic> challenge;
-  final Map<String, dynamic> userParticipant;
+  final Challenge challenge;
+  final Participant userParticipant;
   final bool isSelected;
   final ValueChanged<bool> onToggle;
 
@@ -18,8 +20,8 @@ class SelectableChallengeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final streak = userParticipant['dailyStreak'] as int? ?? 0;
-    final totalPoints = userParticipant['totalPoints'] as int? ?? 0;
+    final streak = userParticipant.dailyStreak;
+    final totalPoints = userParticipant.totalPoints;
     
     return Card(
       elevation: isSelected ? 4 : 1,
@@ -72,7 +74,7 @@ class SelectableChallengeCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          challenge['title'] as String,
+          challenge.title,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -120,9 +122,7 @@ class SelectableChallengeCard extends StatelessWidget {
 
   Widget _buildTypeIcon() {
     return Icon(
-      challenge['type'] == 'competitive'
-          ? Icons.emoji_events
-          : Icons.group,
+      challenge.type.icon,
       color: Colors.grey,
     );
   }

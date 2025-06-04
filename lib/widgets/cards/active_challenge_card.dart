@@ -1,9 +1,11 @@
 // lib/widgets/cards/active_challenge_card.dart
 
+import 'package:challengeaccepted/models/challenge.dart';
+import 'package:challengeaccepted/models/challenge_enums.dart';
 import 'package:flutter/material.dart';
 
 class ActiveChallengeCard extends StatelessWidget {
-  final Map<String, dynamic> challenge;
+  final Challenge challenge;  // Changed from Map<String, dynamic>
   final bool needsLogging;
 
   const ActiveChallengeCard({
@@ -15,10 +17,10 @@ class ActiveChallengeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final challengeStatus = _ChallengeStatus.fromChallenge(challenge);
-    final participants = challenge['participants'] as List<dynamic>? ?? [];
-    final acceptedCount = participants.where((p) => p['status'] == 'accepted').length;
-    final timeLimit = DateTime.tryParse(challenge['timeLimit'] as String? ?? '');
-    final daysRemaining = timeLimit?.difference(DateTime.now()).inDays ?? 0;
+    final participants = challenge.participants;
+    final acceptedCount = challenge.acceptedParticipantsCount; // Use computed property
+    final timeLimit = challenge.timeLimit;
+    final daysRemaining = challenge.daysRemaining;
     
     return Container(
       margin: const EdgeInsets.only(right: 12),
@@ -77,7 +79,7 @@ class ActiveChallengeCard extends StatelessWidget {
         ),
         const SizedBox(width: 4),
         Icon(
-          challenge['type'] == 'competitive' 
+          challenge.type == ChallengeType.competitive 
               ? Icons.emoji_events 
               : Icons.group,
           size: 16,
@@ -90,7 +92,7 @@ class ActiveChallengeCard extends StatelessWidget {
   Widget _buildTitle() {
     return Expanded(
       child: Text(
-        challenge['title'] as String,
+        challenge.title,
         style: const TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 15,
@@ -141,7 +143,7 @@ class ActiveChallengeCard extends StatelessWidget {
             "$daysRemaining days left",
           ),
         ],
-        if (challenge['wager'] != null && (challenge['wager'] as String).isNotEmpty) ...[
+        if (challenge.wager?.isNotEmpty ?? false) ...[
           const SizedBox(height: 2),
           _buildWagerRow(),
         ],
@@ -169,7 +171,7 @@ class ActiveChallengeCard extends StatelessWidget {
         const SizedBox(width: 4),
         Expanded(
           child: Text(
-            challenge['wager'] as String,
+             challenge.wager ?? '',
             style: const TextStyle(
               fontSize: 10,
               color: Colors.orange,
@@ -190,18 +192,17 @@ class _ChallengeStatus {
 
   const _ChallengeStatus(this.color, this.text);
 
-  factory _ChallengeStatus.fromChallenge(Map<String, dynamic> challenge) {
-    final status = challenge['status'] as String? ?? 'pending';
-    
-    switch (status) {
-      case 'active':
+  // Change this method to accept Challenge instead of Map<String, dynamic>
+  factory _ChallengeStatus.fromChallenge(Challenge challenge) {
+    switch (challenge.status) {
+      case ChallengeStatus.active:
         return const _ChallengeStatus(Colors.green, 'ACTIVE');
-      case 'pending':
+      case ChallengeStatus.pending:
         return const _ChallengeStatus(Colors.orange, 'STARTING SOON');
-      case 'completed':
+      case ChallengeStatus.completed:
         return const _ChallengeStatus(Colors.blue, 'COMPLETED');
-      default:
-        return _ChallengeStatus(Colors.grey, status.toUpperCase());
+      case ChallengeStatus.expired:
+        return _ChallengeStatus(Colors.grey, challenge.status.value.toUpperCase());
     }
   }
 }

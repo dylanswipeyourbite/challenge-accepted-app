@@ -72,7 +72,7 @@ class ProviderDailyLogPage extends StatelessWidget {
         
         return IntegratedDailyLogPage(
           challengeId: challengeId,
-          challengeTitle: challenge['title'] as String,
+          challengeTitle: challenge.title,
           userParticipant: userParticipant,
           onComplete: () {
             Navigator.of(context).pop(true);

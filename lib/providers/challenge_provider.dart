@@ -1,14 +1,17 @@
+// lib/providers/challenge_provider.dart
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
+import 'package:challengeaccepted/models/challenge.dart';
+import 'package:challengeaccepted/models/participant.dart';
 
 class ChallengeProvider extends ChangeNotifier {
   GraphQLClient? _client;
   
-  // Challenge data
-  List<Map<String, dynamic>> _allChallenges = [];
-  List<Map<String, dynamic>> _activeChallenges = [];
-  List<Map<String, dynamic>> _pendingChallenges = [];
+  // Challenge data with typed models
+  List<Challenge> _allChallenges = [];
+  List<Challenge> _activeChallenges = [];
+  List<Challenge> _pendingChallenges = [];
   
   // Today's log status for each challenge
   final Map<String, bool> _todayLogStatus = {};
@@ -17,19 +20,18 @@ class ChallengeProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   
-  // Getters
-  List<Map<String, dynamic>> get allChallenges => _allChallenges;
-  List<Map<String, dynamic>> get activeChallenges => _activeChallenges;
-  List<Map<String, dynamic>> get pendingChallenges => _pendingChallenges;
+  // Getters with typed models
+  List<Challenge> get allChallenges => _allChallenges;
+  List<Challenge> get activeChallenges => _activeChallenges;
+  List<Challenge> get pendingChallenges => _pendingChallenges;
   Map<String, bool> get todayLogStatus => _todayLogStatus;
   bool get isLoading => _isLoading;
   String? get error => _error;
   
-  // Computed getters
-  List<Map<String, dynamic>> get challengesNeedingLog {
+  // Computed getters with typed models
+  List<Challenge> get challengesNeedingLog {
     return _activeChallenges.where((challenge) {
-      final challengeId = challenge['id'] as String;
-      return !(_todayLogStatus[challengeId] ?? false);
+      return !(_todayLogStatus[challenge.id] ?? false);
     }).toList();
   }
   
@@ -38,8 +40,7 @@ class ChallengeProvider extends ChangeNotifier {
   bool get allChallengesLoggedToday {
     if (_activeChallenges.isEmpty) return false;
     return _activeChallenges.every((challenge) {
-      final challengeId = challenge['id'] as String;
-      return _todayLogStatus[challengeId] ?? false;
+      return _todayLogStatus[challenge.id] ?? false;
     });
   }
   
@@ -66,7 +67,8 @@ class ChallengeProvider extends ChangeNotifier {
       if (result.hasException) {
         _error = result.exception.toString();
       } else {
-        _processChallenges(result.data?['challenges'] as List<dynamic>? ?? []);
+        final challengesData = result.data?['challenges'] as List<dynamic>? ?? [];
+        _processChallenges(challengesData);
       }
     } catch (e) {
       _error = e.toString();
@@ -89,9 +91,10 @@ class ChallengeProvider extends ChangeNotifier {
       );
       
       if (!result.hasException) {
-        _pendingChallenges = List<Map<String, dynamic>>.from(
-          result.data?['pendingChallenges'] ?? []
-        );
+        final pendingData = result.data?['pendingChallenges'] as List<dynamic>? ?? [];
+        _pendingChallenges = pendingData
+            .map((json) => Challenge.fromJson(json as Map<String, dynamic>))
+            .toList();
         notifyListeners();
       }
     } catch (e) {
@@ -100,51 +103,25 @@ class ChallengeProvider extends ChangeNotifier {
   }
   
   // Process challenges and extract today's log status
-  void _processChallenges(List<dynamic> challenges) {
-    _allChallenges = List<Map<String, dynamic>>.from(challenges);
+  void _processChallenges(List<dynamic> challengesData) {
+    _allChallenges = challengesData
+        .map((json) => Challenge.fromJson(json as Map<String, dynamic>))
+        .toList();
+    
     _activeChallenges = [];
     _todayLogStatus.clear();
     
-    for (final challenge in challenges) {
-      if (challenge['status'] == 'expired') continue;
+    for (final challenge in _allChallenges) {
+      if (challenge.isExpired) continue;
       
-      final participants = challenge['participants'] as List<dynamic>?;
-      if (participants == null) continue;
-      
-      try {
-        // Find current user participant
-        final currentUserParticipant = participants.firstWhere(
-          (p) => p['isCurrentUser'] == true && p['status'] == 'accepted',
-        );
+      // Check if current user is an accepted participant
+      final currentUserParticipant = challenge.currentUserParticipant;
+      if (currentUserParticipant != null && currentUserParticipant.isAccepted) {
+        _activeChallenges.add(challenge);
         
-        if (currentUserParticipant != null) {
-          _activeChallenges.add(challenge as Map<String, dynamic>);
-          
-          // Check today's log status
-          final hasLoggedToday = _checkIfLoggedToday(challenge);
-          _todayLogStatus[challenge['id'] as String] = hasLoggedToday;
-        }
-      } catch (_) {
-        // User not found in participants
+        // Check today's log status
+        _todayLogStatus[challenge.id] = challenge.hasCurrentUserLogged;
       }
-    }
-  }
-  
-  // Check if current user has logged today for a challenge
-  bool _checkIfLoggedToday(Map<String, dynamic> challenge) {
-    final todayStatus = challenge['todayStatus'] as Map<String, dynamic>?;
-    if (todayStatus == null) return false;
-    
-    final participantsStatus = todayStatus['participantsStatus'] as List?;
-    if (participantsStatus == null) return false;
-    
-    try {
-      final currentUserStatus = participantsStatus.firstWhere(
-        (status) => status['participant']['isCurrentUser'] == true,
-      );
-      return currentUserStatus['hasLoggedToday'] as bool? ?? false;
-    } catch (_) {
-      return false;
     }
   }
   
@@ -155,29 +132,18 @@ class ChallengeProvider extends ChangeNotifier {
   }
   
   // Get challenge by ID
-  Map<String, dynamic>? getChallengeById(String id) {
+  Challenge? getChallengeById(String id) {
     try {
-      return _allChallenges.firstWhere((c) => c['id'] == id);
+      return _allChallenges.firstWhere((c) => c.id == id);
     } catch (_) {
       return null;
     }
   }
   
   // Get current user participant for a challenge
-  Map<String, dynamic>? getCurrentUserParticipant(String challengeId) {
+  Participant? getCurrentUserParticipant(String challengeId) {
     final challenge = getChallengeById(challengeId);
-    if (challenge == null) return null;
-    
-    final participants = challenge['participants'] as List<dynamic>?;
-    if (participants == null) return null;
-    
-    try {
-      return participants.firstWhere(
-        (p) => p['isCurrentUser'] == true,
-      ) as Map<String, dynamic>;
-    } catch (_) {
-      return null;
-    }
+    return challenge?.currentUserParticipant;
   }
   
   // Refresh all data

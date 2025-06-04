@@ -1,3 +1,4 @@
+import 'package:challengeaccepted/models/daily_log.dart';
 import 'package:challengeaccepted/widgets/common/post_interaction_bar.dart';
 import 'package:flutter/material.dart';
 
@@ -12,7 +13,7 @@ class PostCard extends StatelessWidget {
   final List comments;
   final VoidCallback? onRefetch;
   final String? caption;
-  final Map<String, dynamic>? dailyLog; // NEW: Daily log context
+  final DailyLog? dailyLog; // NEW: Daily log context
 
   const PostCard({
     super.key,

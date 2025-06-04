@@ -1,3 +1,5 @@
+import 'package:challengeaccepted/models/challenge.dart';
+import 'package:challengeaccepted/models/processed_challenge.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
@@ -45,32 +47,30 @@ class ActiveChallengesSection extends StatelessWidget {
     );
   }
 
-
-
-  List<Map<String, dynamic>> _processAndSortChallenges(
-    List<Map<String, dynamic>> challenges,
+  List<ProcessedChallenge> _processAndSortChallenges(
+    List<Challenge> challenges,
     Map<String, bool> todayLogStatus,
   ) {
-    final List<Map<String, dynamic>> processedList = [];
+    final List<ProcessedChallenge> processedList = [];
     
     for (final challenge in challenges) {
-      final challengeId = challenge['id'] as String;
+      final challengeId = challenge.id;
       final hasLoggedToday = todayLogStatus[challengeId] ?? false;
       
-      processedList.add({
-        'challenge': challenge,
-        'needsLogging': !hasLoggedToday,
-      });
+      processedList.add(ProcessedChallenge(
+        challenge: challenge,
+        needsLogging: !hasLoggedToday,
+      ));
     }
     
     // Sort: challenges needing logging first
     processedList.sort((a, b) {
-      if (a['needsLogging'] && !b['needsLogging']) return -1;
-      if (!a['needsLogging'] && b['needsLogging']) return 1;
+      if (a.needsLogging && !b.needsLogging) return -1;
+      if (!a.needsLogging && b.needsLogging) return 1;
       return 0;
     });
     
-    return processedList;
+    return processedList;  // Don't forget to return the list!
   }
 }
 
@@ -94,7 +94,7 @@ class _EmptyChallengesMessage extends StatelessWidget {
 }
 
 class _ChallengesList extends StatelessWidget {
-  final List<Map<String, dynamic>> processedChallenges;
+  final List<ProcessedChallenge> processedChallenges;  // Changed from Map to ProcessedChallenge
 
   const _ChallengesList({
     required this.processedChallenges,
@@ -108,17 +108,17 @@ class _ChallengesList extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: processedChallenges.length,
         itemBuilder: (context, index) {
-          final item = processedChallenges[index];
-          final challenge = item['challenge'] as Map<String, dynamic>;
+          final item = processedChallenges[index];  // Now it's ProcessedChallenge
+          final challenge = item.challenge;  // Access the challenge property
           
           return GestureDetector(
             onTap: () => NavigationHelper.navigateToChallengeDetail(
               context,
-              challenge['id'] as String,
+              challenge.id,
             ),
             child: ActiveChallengeCard(
-              challenge: challenge,
-              needsLogging: item['needsLogging'] as bool,
+              challenge: challenge,  // Pass the Challenge object
+              needsLogging: item.needsLogging,  // Access the needsLogging property
             ),
           );
         },

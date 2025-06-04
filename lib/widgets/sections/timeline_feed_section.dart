@@ -1,7 +1,11 @@
+// lib/widgets/sections/timeline_feed_section.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/providers/user_activity_provider.dart';
 import 'package:challengeaccepted/widgets/cards/post_card.dart';
+import 'package:challengeaccepted/models/media.dart';
+import 'package:challengeaccepted/models/comment.dart';
 
 class TimelineFeedSection extends StatelessWidget {
   const TimelineFeedSection({super.key});
@@ -63,7 +67,7 @@ class TimelineFeedSection extends StatelessWidget {
     // Timeline list
     return _TimelineList(
       mediaList: provider.timelineMedia,
-      onMediaInteraction: (mediaId, {hasCheered, comments}) {
+      onMediaInteraction: (String mediaId, {bool? hasCheered, List<Comment>? comments}) {
         provider.updateMediaInteraction(
           mediaId,
           hasCheered: hasCheered,
@@ -75,8 +79,8 @@ class TimelineFeedSection extends StatelessWidget {
 }
 
 class _TimelineList extends StatelessWidget {
-  final List<Map<String, dynamic>> mediaList;
-  final Function(String mediaId, {bool? hasCheered, List? comments}) onMediaInteraction;
+  final List<Media> mediaList;
+  final Function(String mediaId, {bool? hasCheered, List<Comment>? comments}) onMediaInteraction;
 
   const _TimelineList({
     required this.mediaList,
@@ -96,33 +100,23 @@ class _TimelineList extends StatelessWidget {
     );
   }
 
-  Widget _buildPostCard(Map<String, dynamic> media) {
-    final user = media['user'] as Map<String, dynamic>?;
-    final cheers = media['cheers'] as List<dynamic>? ?? [];
-    final comments = media['comments'] as List<dynamic>? ?? [];
-    final dailyLog = media['dailyLog'] as Map<String, dynamic>?;
-    
+  Widget _buildPostCard(Media media) {
     return PostCard(
-      mediaId: media['id'] as String,
-      imageUrl: media['url'] as String,
-      displayName: user?['displayName'] as String? ?? 'Unknown',
-      avatarUrl: user?['avatarUrl'] as String? ?? '',
-      cheers: cheers,
-      comments: comments,
-      hasCheered: media['hasCheered'] as bool? ?? false,
+      mediaId: media.id,
+      imageUrl: media.url,
+      displayName: media.user.displayName,
+      avatarUrl: media.user.avatarUrl ?? '',
+      cheers: media.cheers,
+      comments: media.comments.map((c) => c.toJson()).toList(), // Convert to List<dynamic> for now
+      hasCheered: media.hasCheered,
       onRefetch: () {
         // Update is handled by provider
-        onMediaInteraction(media['id'] as String);
+        onMediaInteraction(media.id);
       },
-      caption: media['caption'] as String?,
-      uploadedAt: _parseDateTime(media['uploadedAt']),
-      dailyLog: dailyLog,
+      caption: media.caption,
+      uploadedAt: media.uploadedAt,
+      dailyLog: media.dailyLog,
     );
-  }
-
-  DateTime? _parseDateTime(dynamic dateStr) {
-    if (dateStr == null) return null;
-    return DateTime.tryParse(dateStr as String);
   }
 }
 

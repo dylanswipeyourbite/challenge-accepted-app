@@ -1,9 +1,11 @@
 // lib/widgets/cards/participant_card.dart
 
 import 'package:flutter/material.dart';
+import 'package:challengeaccepted/models/participant.dart';
+import 'package:challengeaccepted/models/challenge_enums.dart';
 
 class ParticipantCard extends StatelessWidget {
-  final Map<String, dynamic> participant;
+  final Participant participant;
   final int rank;
 
   const ParticipantCard({
@@ -14,19 +16,17 @@ class ParticipantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = participant['user'] as Map<String, dynamic>?;
-    final streak = participant['dailyStreak'] as int? ?? 0;
-    final role = participant['role'] as String? ?? 'participant';
-    final status = participant['status'] as String? ?? 'pending';
-    final totalPoints = participant['totalPoints'] as int? ?? 0;
-
-    if (user == null) return const SizedBox.shrink();
+    final user = participant.user;
+    final streak = participant.dailyStreak;
+    final role = participant.role;
+    final status = participant.status;
+    final totalPoints = participant.totalPoints;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
-        leading: _buildLeading(user['avatarUrl'] as String?),
-        title: _buildTitle(user['displayName'] as String? ?? 'Unknown', role),
+        leading: _buildLeading(user.avatarUrl),
+        title: _buildTitle(user.displayName, role),
         subtitle: _buildSubtitle(streak, totalPoints, status),
         trailing: _buildTrailing(streak),
       ),
@@ -68,11 +68,11 @@ class ParticipantCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTitle(String displayName, String role) {
+  Widget _buildTitle(String displayName, ParticipantRole role) {
     return Row(
       children: [
         Text(displayName),
-        if (role == 'creator') ...[
+        if (role == ParticipantRole.creator) ...[
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -94,12 +94,12 @@ class ParticipantCard extends StatelessWidget {
     );
   }
 
-  Widget _buildSubtitle(int streak, int totalPoints, String status) {
+  Widget _buildSubtitle(int streak, int totalPoints, ParticipantStatus status) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text("🔥 $streak day streak • ⭐ $totalPoints points"),
-        if (status == 'pending')
+        if (status == ParticipantStatus.pending)
           Text(
             'Pending invitation',
             style: TextStyle(
