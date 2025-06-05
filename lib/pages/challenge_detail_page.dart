@@ -1,4 +1,4 @@
-// lib/pages/provider_aware_challenge_detail_page.dart
+// lib/pages/challenge_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/models/challenge.dart';

@@ -1,4 +1,4 @@
-// lib/widgets/common/provider_aware_comment_section.dart
+// lib/widgets/common/comment_section.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';

@@ -1,3 +1,4 @@
+// lib/widgets/sections/active_challenges_section.dart
 import 'package:challengeaccepted/models/challenge.dart';
 import 'package:challengeaccepted/models/processed_challenge.dart';
 import 'package:flutter/material.dart';
@@ -70,7 +71,7 @@ class ActiveChallengesSection extends StatelessWidget {
       return 0;
     });
     
-    return processedList;  // Don't forget to return the list!
+    return processedList;
   }
 }
 
@@ -94,7 +95,7 @@ class _EmptyChallengesMessage extends StatelessWidget {
 }
 
 class _ChallengesList extends StatelessWidget {
-  final List<ProcessedChallenge> processedChallenges;  // Changed from Map to ProcessedChallenge
+  final List<ProcessedChallenge> processedChallenges;
 
   const _ChallengesList({
     required this.processedChallenges,
@@ -108,8 +109,8 @@ class _ChallengesList extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: processedChallenges.length,
         itemBuilder: (context, index) {
-          final item = processedChallenges[index];  // Now it's ProcessedChallenge
-          final challenge = item.challenge;  // Access the challenge property
+          final item = processedChallenges[index];
+          final challenge = item.challenge;
           
           return GestureDetector(
             onTap: () => NavigationHelper.navigateToChallengeDetail(
@@ -117,8 +118,8 @@ class _ChallengesList extends StatelessWidget {
               challenge.id,
             ),
             child: ActiveChallengeCard(
-              challenge: challenge,  // Pass the Challenge object
-              needsLogging: item.needsLogging,  // Access the needsLogging property
+              challenge: challenge,
+              needsLogging: item.needsLogging,
             ),
           );
         },

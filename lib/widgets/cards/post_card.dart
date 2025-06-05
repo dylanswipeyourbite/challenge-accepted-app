@@ -1,12 +1,10 @@
-// lib/widgets/cards/provider_aware_post_card.dart
+// lib/widgets/cards/post_card.dart
 import 'package:challengeaccepted/widgets/common/post_interaction_bar.dart';
 import 'package:flutter/material.dart';
-// import 'package:provider/provider.dart';
 import 'package:challengeaccepted/models/media.dart';
 import 'package:challengeaccepted/models/daily_log.dart';
 import 'package:challengeaccepted/models/challenge_enums.dart';
 import 'package:challengeaccepted/models/user.dart' as AppUser;
-// import 'package:challengeaccepted/providers/user_activity_provider.dart';
 
 class PostCard extends StatelessWidget {
   final Media media;
@@ -21,7 +19,8 @@ class PostCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasCaption = media.caption != null && media.caption!.trim().isNotEmpty;
-    final hasActivityContext = dailyLog != null;
+    final hasActivityContext = dailyLog != null || media.dailyLog != null;
+    final effectiveDailyLog = dailyLog ?? media.dailyLog;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -37,13 +36,15 @@ class PostCard extends StatelessWidget {
                 _UserHeader(
                   user: media.user,
                   uploadedAt: media.uploadedAt,
-                  activityContext: hasActivityContext ? _buildActivityBadge() : null,
+                  activityContext: hasActivityContext && effectiveDailyLog != null 
+                      ? _buildActivityBadge(effectiveDailyLog) 
+                      : null,
                 ),
                 
                 // Activity context bar
-                if (hasActivityContext) ...[
+                if (hasActivityContext && effectiveDailyLog != null) ...[
                   const SizedBox(height: 12),
-                  _ActivityContextBar(dailyLog: dailyLog!),
+                  _ActivityContextBar(dailyLog: effectiveDailyLog),
                 ],
               ],
             ),
@@ -70,7 +71,7 @@ class PostCard extends StatelessWidget {
             type: media.type,
           ),
 
-          // Interaction bar (provider-aware)
+          // Interaction bar
           Padding(
             padding: const EdgeInsets.all(16),
             child: PostInteractionBar(media: media),
@@ -80,10 +81,8 @@ class PostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildActivityBadge() {
-    if (dailyLog == null) return const SizedBox.shrink();
-
-    final type = dailyLog!.type;
+  Widget _buildActivityBadge(DailyLog dailyLog) {
+    final type = dailyLog.type;
     
     Color badgeColor;
     IconData badgeIcon;
@@ -92,7 +91,7 @@ class PostCard extends StatelessWidget {
     if (type == LogType.activity) {
       badgeColor = Colors.green;
       badgeIcon = Icons.directions_run;
-      badgeText = dailyLog!.activityType?.name.toUpperCase() ?? 'ACTIVITY';
+      badgeText = dailyLog.activityType?.name.toUpperCase() ?? 'ACTIVITY';
     } else {
       badgeColor = Colors.blue;
       badgeIcon = Icons.bed;

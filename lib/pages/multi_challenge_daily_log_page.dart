@@ -100,7 +100,7 @@ class _MultiChallengeDailyLogPageState extends State<MultiChallengeDailyLogPage>
 
         return IntegratedDailyLogPage(
           challengeId: currentChallengeId,
-          challengeTitle: challenge['title'] as String,
+          challengeTitle: challenge.title,
           userParticipant: userParticipant,
           isMultiChallenge: widget.challengeIds.length > 1,
           challengeProgress: '${currentChallengeIndex + 1} of ${widget.challengeIds.length}',

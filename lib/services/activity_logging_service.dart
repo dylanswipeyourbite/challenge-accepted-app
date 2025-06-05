@@ -1,11 +1,11 @@
 // lib/services/activity_logging_service.dart
-import 'package:challengeaccepted/models/challenge.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
 import 'package:challengeaccepted/providers/user_activity_provider.dart';
 import 'package:challengeaccepted/models/challenge_enums.dart';
 import 'package:challengeaccepted/models/media.dart';
+import 'package:challengeaccepted/models/challenge.dart';
 import 'package:provider/provider.dart';
 
 class ActivityLogResult {
@@ -74,6 +74,14 @@ class ActivityLoggingService {
           createdAt
         }
         hasCheered
+        dailyLogId
+        dailyLog {
+          id
+          type
+          activityType
+          points
+          date
+        }
       }
     }
   """;
