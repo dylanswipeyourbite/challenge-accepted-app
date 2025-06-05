@@ -1,10 +1,11 @@
 // lib/widgets/lists/participant_list.dart
 
 import 'package:flutter/material.dart';
+import 'package:challengeaccepted/models/participant.dart';
 import 'package:challengeaccepted/widgets/cards/participant_card.dart';
 
 class ParticipantList extends StatelessWidget {
-  final List<dynamic> participants;
+  final List<Participant> participants;
   final VoidCallback? onRefresh;
 
   const ParticipantList({
@@ -21,10 +22,10 @@ class ParticipantList extends StatelessWidget {
       );
     }
 
-    final sortedParticipants = List<dynamic>.from(participants)
+    final sortedParticipants = List<Participant>.from(participants)
       ..sort((a, b) {
-        final streakA = a['dailyStreak'] as int? ?? 0;
-        final streakB = b['dailyStreak'] as int? ?? 0;
+        final streakA = a.dailyStreak;
+        final streakB = b.dailyStreak;
         return streakB.compareTo(streakA); // Sort by streak descending
       });
 
@@ -34,7 +35,7 @@ class ParticipantList extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         itemCount: sortedParticipants.length,
         itemBuilder: (context, index) {
-          final participant = sortedParticipants[index] as Map<String, dynamic>;
+          final participant = sortedParticipants[index];
           return ParticipantCard(
             participant: participant,
             rank: index + 1,

@@ -5,7 +5,6 @@ import 'package:challengeaccepted/providers/challenge_provider.dart';
 import 'package:challengeaccepted/providers/user_activity_provider.dart';
 import 'package:challengeaccepted/pages/challenge_detail_page.dart';
 import 'package:challengeaccepted/pages/daily_log_page.dart';
-import 'package:challengeaccepted/widgets/common/error_message.dart';
 
 class NavigationHelper {
   // Navigate to challenge detail using only challenge ID
@@ -58,33 +57,11 @@ class ProviderDailyLogPage extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-    return Consumer<ChallengeProvider>(
-      builder: (context, provider, child) {
-        final challenge = provider.getChallengeById(challengeId);
-        final userParticipant = provider.getCurrentUserParticipant(challengeId);
-        
-        if (challenge == null || userParticipant == null) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Log Activity')),
-            body: ErrorMessage(
-              message: challenge == null 
-                  ? 'Challenge not found'
-                  : 'You are not a participant in this challenge',
-              showRetry: false,
-              actionLabel: 'Go Back',
-              onAction: () => Navigator.of(context).pop(),
-            ),
-          );
-        }
-        
-        return IntegratedDailyLogPage(
-          challengeId: challengeId,
-          challengeTitle: challenge.title,
-          userParticipant: userParticipant,
-          onComplete: () {
-            Navigator.of(context).pop(true);
-          },
-        );
+    // Use the new provider-aware version directly
+    return ProviderAwareDailyLogPage(
+      challengeId: challengeId,
+      onComplete: () {
+        Navigator.of(context).pop(true);
       },
     );
   }

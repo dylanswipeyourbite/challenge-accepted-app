@@ -98,10 +98,8 @@ class _MultiChallengeDailyLogPageState extends State<MultiChallengeDailyLogPage>
           );
         }
 
-        return IntegratedDailyLogPage(
+        return ProviderAwareDailyLogPage(
           challengeId: currentChallengeId,
-          challengeTitle: challenge.title,
-          userParticipant: userParticipant,
           isMultiChallenge: widget.challengeIds.length > 1,
           challengeProgress: '${currentChallengeIndex + 1} of ${widget.challengeIds.length}',
           onComplete: _onChallengeLogged,

@@ -3,6 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
+import 'package:challengeaccepted/models/challenge.dart';
+import 'package:challengeaccepted/models/participant.dart';
+import 'package:challengeaccepted/models/challenge_enums.dart';
 import 'package:challengeaccepted/widgets/lists/participant_list.dart';
 import 'package:challengeaccepted/widgets/common/loading_indicator.dart';
 import 'package:challengeaccepted/widgets/common/error_message.dart';
@@ -36,12 +39,14 @@ class ChallengeStreaksTab extends StatelessWidget {
           );
         }
 
-        final challenge = result.data?['challenge'] as Map<String, dynamic>?;
-        if (challenge == null) {
+        final challengeData = result.data?['challenge'] as Map<String, dynamic>?;
+        if (challengeData == null) {
           return const Center(child: Text('Challenge not found'));
         }
 
-        final participants = challenge['participants'] as List<dynamic>? ?? [];
+        // Parse the challenge data to get typed Challenge object
+        final challenge = Challenge.fromJson(challengeData);
+        final participants = challenge.participants;
 
         return Column(
           children: [
@@ -59,11 +64,12 @@ class ChallengeStreaksTab extends StatelessWidget {
     );
   }
 
-  Widget _buildChallengeStats(List<dynamic> participants) {
-    final activeCount = participants.where((p) => p['status'] == 'accepted').length;
+  Widget _buildChallengeStats(List<Participant> participants) {
+    // Now we can use proper typed access
+    final activeCount = participants.where((p) => p.status == ParticipantStatus.accepted).length;
     final totalStreak = participants.fold<int>(
       0,
-      (sum, p) => sum + (p['dailyStreak'] as int? ?? 0),
+      (sum, p) => sum + p.dailyStreak,
     );
 
     return Container(
