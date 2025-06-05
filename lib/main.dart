@@ -1,16 +1,22 @@
 import 'package:challengeaccepted/pages/homepage.dart';
 import 'package:challengeaccepted/pages/login_page.dart';
 import 'package:challengeaccepted/providers/app_providers.dart';
+import 'package:challengeaccepted/services/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:timezone/data/latest_10y.dart' as tz;
 import 'graphql_client.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await initHiveForFlutter();
+  await NotificationService().initialize();
+  
+  // Initialize timezone for notifications
+  tz.initializeTimeZones();
   final graphQLClient = await createClient();
 
   runApp(MyApp(client: graphQLClient));

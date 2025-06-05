@@ -147,12 +147,18 @@ class ChallengesQueries {
       challenge(id: \$id) {
         id
         title
+        description
+        rules
         sport
         type
         startDate
         timeLimit
         wager
         status
+        minWeeklyActivities
+        minPointsToJoin
+        allowedActivities
+        requireDailyPhoto
         challengeStreak
         lastCompleteLogDate
         createdAt
@@ -177,6 +183,22 @@ class ChallengesQueries {
           restDays
           weeklyRestDaysUsed
         }
+        milestones {
+          id
+          title
+          description
+          type
+          targetValue
+          icon
+          reward
+          achievedBy {
+            user {
+              id
+              displayName
+            }
+            achievedAt
+          }
+        }
         todayStatus {
           allParticipantsLogged
           participantsLoggedCount
@@ -187,7 +209,6 @@ class ChallengesQueries {
               user {
                 id
                 displayName
-                avatarUrl
               }
               isCurrentUser
             }
@@ -231,4 +252,27 @@ class ChallengesQueries {
       }
     }
   """;
+
+  static const String getChallengeTemplates = """
+    query GetChallengeTemplates {
+      challengeTemplates {
+        id
+        title
+        description
+        rules
+        sport
+        minWeeklyActivities
+        allowedActivities
+        suggestedMilestones {
+          title
+          description
+          type
+          targetValue
+          icon
+        }
+        icon
+      }
+    }
+  """;
+
 }
