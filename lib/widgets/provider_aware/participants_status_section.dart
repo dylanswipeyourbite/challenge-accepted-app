@@ -38,7 +38,7 @@ class ParticipantsStatusSection extends StatelessWidget {
               const SizedBox(height: 12),
               ...participantsStatus.map((status) {
                 return _ParticipantStatusTile(status: status);
-              }).toList(),
+              }),
             ],
           ),
         );
