@@ -12,6 +12,10 @@ class NavigationHelper {
     BuildContext context,
     String challengeId,
   ) async {
+    // Store providers before navigation
+    final challengeProvider = context.read<ChallengeProvider>();
+    final userActivityProvider = context.read<UserActivityProvider>();
+    
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -20,9 +24,12 @@ class NavigationHelper {
     );
     
     // Handle result if activity was logged
-    if (result == true && context.mounted) {
-      await context.read<ChallengeProvider>().refresh();
-      await context.read<UserActivityProvider>().refresh();
+    if (result == true) {
+      // Don't use context here, use the stored providers
+      await Future.wait([
+        challengeProvider.refresh(),
+        userActivityProvider.refresh(),
+      ]);
     }
   }
   
@@ -31,6 +38,10 @@ class NavigationHelper {
     BuildContext context,
     String challengeId,
   ) async {
+    // Store providers before navigation
+    final challengeProvider = context.read<ChallengeProvider>();
+    final userActivityProvider = context.read<UserActivityProvider>();
+    
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -38,11 +49,44 @@ class NavigationHelper {
       ),
     );
     
-    if (result == true && context.mounted) {
-      // Refresh data after logging
-      await context.read<ChallengeProvider>().refresh();
-      await context.read<UserActivityProvider>().refresh();
+    if (result == true) {
+      // Don't use context here, use the stored providers
+      await Future.wait([
+        challengeProvider.refresh(),
+        userActivityProvider.refresh(),
+      ]);
     }
+  }
+  
+  // Safe navigation to daily log with completion callback
+  static Future<void> navigateToDailyLogWithCallback(
+    BuildContext context,
+    String challengeId,
+  ) async {
+    // Store providers before navigation
+    final challengeProvider = context.read<ChallengeProvider>();
+    final userActivityProvider = context.read<UserActivityProvider>();
+    
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProviderAwareDailyLogPage(
+          challengeId: challengeId,
+          onComplete: () async {
+            // Pop the daily log page
+            Navigator.of(context).pop();
+            
+            // Refresh providers after a short delay to ensure navigation is complete
+            await Future.delayed(const Duration(milliseconds: 100));
+            
+            await Future.wait([
+              challengeProvider.refresh(),
+              userActivityProvider.refresh(),
+            ]);
+          },
+        ),
+      ),
+    );
   }
 }
 
@@ -61,7 +105,7 @@ class ProviderDailyLogPage extends StatelessWidget {
     return ProviderAwareDailyLogPage(
       challengeId: challengeId,
       onComplete: () {
-        Navigator.of(context).pop(true);
+        // Don't pop here - let the daily log page handle its own navigation
       },
     );
   }

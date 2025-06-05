@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/models/challenge.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
-import 'package:challengeaccepted/utils/navigation_helper.dart';
+import 'package:challengeaccepted/providers/user_activity_provider.dart';
+import 'package:challengeaccepted/pages/daily_log_page.dart';
 import 'package:challengeaccepted/widgets/provider_aware/challenge_streak_hero.dart';
 import 'package:challengeaccepted/widgets/provider_aware/today_progress_section.dart';
 import 'package:challengeaccepted/widgets/provider_aware/participants_status_section.dart';
@@ -17,6 +18,33 @@ class ChallengeDetailPage extends StatelessWidget {
     super.key,
     required this.challengeId,
   });
+
+  Future<void> _navigateToDailyLog(BuildContext context) async {
+    // Store providers before navigation
+    final challengeProvider = context.read<ChallengeProvider>();
+    final userActivityProvider = context.read<UserActivityProvider>();
+    
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProviderAwareDailyLogPage(
+          challengeId: challengeId,
+          onComplete: () {
+            Navigator.of(context).pop(true);
+          },
+        ),
+      ),
+    );
+    
+    if (result == true) {
+      // Use stored providers after navigation completes
+      await Future.delayed(const Duration(milliseconds: 100));
+      await Future.wait([
+        challengeProvider.refresh(),
+        userActivityProvider.refresh(),
+      ]);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +78,7 @@ class ChallengeDetailPage extends StatelessWidget {
               SliverToBoxAdapter(
                 child: TodayProgressSection(
                   challengeId: challengeId,
-                  onLogActivity: () => NavigationHelper.navigateToDailyLog(context, challengeId),
+                  onLogActivity: () => _navigateToDailyLog(context),
                 ),
               ),
               
@@ -84,7 +112,7 @@ class ChallengeDetailPage extends StatelessWidget {
           ),
           floatingActionButton: !hasLoggedToday
               ? FloatingActionButton.extended(
-                  onPressed: () => NavigationHelper.navigateToDailyLog(context, challengeId),
+                  onPressed: () => _navigateToDailyLog(context),
                   backgroundColor: Colors.green,
                   icon: const Icon(Icons.add),
                   label: const Text('Log Activity'),

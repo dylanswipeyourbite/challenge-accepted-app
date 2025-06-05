@@ -10,6 +10,7 @@ class ChallengesQueries {
           avatarUrl
         }
         participants {
+          id
           role
           progress
           dailyStreak
@@ -36,6 +37,7 @@ class ChallengesQueries {
         wager
         status
         participants {
+          id
           isCurrentUser
           user {
             id
@@ -60,12 +62,17 @@ class ChallengesQueries {
           timeLimit
           wager
           status
+          startDate
+          challengeStreak
+          lastCompleteLogDate
+          createdAt
           createdBy {
             id
             displayName
             avatarUrl
           }
           participants {
+            id
             isCurrentUser
             user {
               id
@@ -78,6 +85,8 @@ class ChallengesQueries {
             dailyStreak
             totalPoints
             lastLogDate
+            restDays
+            weeklyRestDaysUsed
           }
           todayStatus {
             allParticipantsLogged
@@ -109,12 +118,17 @@ class ChallengesQueries {
         type
         timeLimit
         wager
+        startDate
+        challengeStreak
+        lastCompleteLogDate
+        createdAt
         createdBy {
           id
           displayName
           avatarUrl
         }
         participants {
+          id
           user {
             id
             displayName
@@ -141,6 +155,7 @@ class ChallengesQueries {
         status
         challengeStreak
         lastCompleteLogDate
+        createdAt
         createdBy {
           id
           displayName
@@ -190,6 +205,7 @@ class ChallengesQueries {
         id
         title
         participants {
+          id
           role
           isCurrentUser
           media {

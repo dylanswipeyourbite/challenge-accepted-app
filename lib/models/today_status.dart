@@ -16,12 +16,12 @@ class TodayStatus {
 
   factory TodayStatus.fromJson(Map<String, dynamic> json) {
     return TodayStatus(
-      allParticipantsLogged: json['allParticipantsLogged'] as bool,
-      participantsLoggedCount: json['participantsLoggedCount'] as int,
-      totalParticipants: json['totalParticipants'] as int,
-      participantsStatus: (json['participantsStatus'] as List<dynamic>)
-          .map((p) => ParticipantDailyStatus.fromJson(p as Map<String, dynamic>))
-          .toList(),
+      allParticipantsLogged: json['allParticipantsLogged'] as bool? ?? false,
+      participantsLoggedCount: json['participantsLoggedCount'] as int? ?? 0,
+      totalParticipants: json['totalParticipants'] as int? ?? 0,
+      participantsStatus: (json['participantsStatus'] as List<dynamic>?)
+          ?.map((p) => ParticipantDailyStatus.fromJson(p as Map<String, dynamic>))
+          .toList() ?? [],
     );
   }
 

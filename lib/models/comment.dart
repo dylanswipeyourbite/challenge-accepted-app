@@ -16,10 +16,12 @@ class Comment {
 
   factory Comment.fromJson(Map<String, dynamic> json) {
     return Comment(
-      id: json['id'] as String,
-      text: json['text'] as String,
-      author: User.fromJson(json['author'] as Map<String, dynamic>),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      id: json['id'] as String? ?? '',
+      text: json['text'] as String? ?? '',
+      author: User.fromJson(json['author'] as Map<String, dynamic>? ?? {}),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
     );
   }
 

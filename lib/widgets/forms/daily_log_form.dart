@@ -29,18 +29,19 @@ class _RefactoredDailyLogFormState extends State<RefactoredDailyLogForm> {
   ReusableMediaUploadResult? _mediaResult;
   bool _isSubmitting = false;
 
-  late final ActivityLoggingService _loggingService;
+  // Remove the service from initState - we'll get it when needed
+  ActivityLoggingService? _loggingService;
 
-  @override
-  void initState() {
-    super.initState();
-    _loggingService = ActivityLoggingService.of(context);
+  // Get the service lazily when needed
+  ActivityLoggingService get loggingService {
+    _loggingService ??= ActivityLoggingService.of(context);
+    return _loggingService!;
   }
 
   Future<void> _submitLog() async {
     setState(() => _isSubmitting = true);
 
-    final result = await _loggingService.logActivity(
+    final result = await loggingService.logActivity(
       challengeId: widget.challengeId,
       type: _selectedLogType,
       activityType: _activityType,
@@ -56,10 +57,12 @@ class _RefactoredDailyLogFormState extends State<RefactoredDailyLogForm> {
     if (result.success) {
       HapticFeedback.mediumImpact();
       
+      if (!mounted) return;
+      
       await showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => ActivitySuccessDialog(
+        builder: (dialogContext) => ActivitySuccessDialog(
           pointsEarned: result.pointsEarned,
           newStreak: result.newStreak,
           challengeTitle: widget.challengeTitle,
@@ -68,6 +71,8 @@ class _RefactoredDailyLogFormState extends State<RefactoredDailyLogForm> {
       );
     } else {
       HapticFeedback.heavyImpact();
+      
+      if (!mounted) return;
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

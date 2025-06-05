@@ -2,16 +2,44 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
+import 'package:challengeaccepted/providers/user_activity_provider.dart';
+import 'package:challengeaccepted/pages/daily_log_page.dart';
 
 class TodayProgressSection extends StatelessWidget {
   final String challengeId;
-  final VoidCallback onLogActivity;
+  final VoidCallback? onLogActivity;
 
   const TodayProgressSection({
     super.key,
     required this.challengeId,
-    required this.onLogActivity,
+    this.onLogActivity,
   });
+
+  Future<void> _navigateToDailyLog(BuildContext context) async {
+    // Store providers before navigation
+    final challengeProvider = context.read<ChallengeProvider>();
+    final userActivityProvider = context.read<UserActivityProvider>();
+    
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProviderAwareDailyLogPage(
+          challengeId: challengeId,
+          onComplete: () {
+            Navigator.of(context).pop(true);
+          },
+        ),
+      ),
+    );
+    
+    if (result == true) {
+      // Use stored providers, not context
+      await Future.wait([
+        challengeProvider.refresh(),
+        userActivityProvider.refresh(),
+      ]);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +101,9 @@ class TodayProgressSection extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: onLogActivity,
+                    onPressed: () => onLogActivity != null 
+                        ? onLogActivity!() 
+                        : _navigateToDailyLog(context),
                     icon: const Icon(Icons.add),
                     label: const Text('Log Your Activity'),
                     style: ElevatedButton.styleFrom(

@@ -39,19 +39,25 @@ class Challenge {
 
   factory Challenge.fromJson(Map<String, dynamic> json) {
     return Challenge(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      sport: SportType.fromString(json['sport'] as String),
-      type: ChallengeType.fromString(json['type'] as String),
-      startDate: DateTime.parse(json['startDate'] as String),
-      timeLimit: DateTime.parse(json['timeLimit'] as String),
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      sport: SportType.fromString(json['sport'] as String? ?? 'workout'),
+      type: ChallengeType.fromString(json['type'] as String? ?? 'competitive'),
+      startDate: json['startDate'] != null 
+          ? DateTime.parse(json['startDate'] as String)
+          : DateTime.now(),
+      timeLimit: json['timeLimit'] != null
+          ? DateTime.parse(json['timeLimit'] as String)
+          : DateTime.now().add(const Duration(days: 30)),
       wager: json['wager'] as String?,
-      createdBy: User.fromJson(json['createdBy'] as Map<String, dynamic>),
-      participants: (json['participants'] as List<dynamic>)
-          .map((p) => Participant.fromJson(p as Map<String, dynamic>))
-          .toList(),
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      status: ChallengeStatus.fromString(json['status'] as String),
+      createdBy: User.fromJson(json['createdBy'] as Map<String, dynamic>? ?? {}),
+      participants: (json['participants'] as List<dynamic>?)
+          ?.map((p) => Participant.fromJson(p as Map<String, dynamic>))
+          .toList() ?? [],
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
+      status: ChallengeStatus.fromString(json['status'] as String? ?? 'pending'),
       challengeStreak: json['challengeStreak'] as int? ?? 0,
       lastCompleteLogDate: json['lastCompleteLogDate'] != null
           ? DateTime.parse(json['lastCompleteLogDate'] as String)

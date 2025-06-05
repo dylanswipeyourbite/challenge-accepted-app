@@ -1,3 +1,4 @@
+// lib/models/user.dart
 class User {
   final String id;
   final String firebaseUid;
@@ -16,17 +17,13 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
-    // Add validation for required fields
-    if (json['id'] == null) throw Exception('User id is required');
-    if (json['displayName'] == null) throw Exception('User displayName is required');
-    
     return User(
-      id: json['id'] as String,
-      firebaseUid: json['firebaseUid'] as String? ?? '',  // Provide default if null
-      displayName: json['displayName'] as String,
-      email: json['email'] as String? ?? '',  // Provide default if null
+      id: json['id'] as String? ?? '',
+      firebaseUid: json['firebaseUid'] as String? ?? '',
+      displayName: json['displayName'] as String? ?? 'Anonymous',
+      email: json['email'] as String? ?? '',
       avatarUrl: json['avatarUrl'] as String?,
-      createdAt: json['createdAt'] != null 
+      createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
     );

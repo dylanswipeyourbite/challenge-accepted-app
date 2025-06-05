@@ -67,7 +67,7 @@ class ChallengeProvider extends ChangeNotifier {
       if (result.hasException) {
         _error = result.exception.toString();
       } else {
-        final challengesData = result.data?['challenges'] ?? [];
+        final challengesData = result.data?['challenges'] as List<dynamic>? ?? [];
         _processChallenges(challengesData);
       }
     } catch (e) {
@@ -91,10 +91,19 @@ class ChallengeProvider extends ChangeNotifier {
       );
       
       if (!result.hasException) {
-        final pendingData = result.data?['pendingChallenges'] ?? [];
-        _pendingChallenges = List<Challenge>.from(
-          pendingData.map((json) => Challenge.fromJson(json))
-        );
+        final pendingData = result.data?['pendingChallenges'] as List<dynamic>? ?? [];
+        _pendingChallenges = [];
+        
+        for (final item in pendingData) {
+          try {
+            final challenge = Challenge.fromJson(item as Map<String, dynamic>);
+            _pendingChallenges.add(challenge);
+          } catch (e) {
+            print('Error parsing pending challenge: $e');
+            print('Challenge data: $item');
+          }
+        }
+        
         notifyListeners();
       }
     } catch (e) {
@@ -103,29 +112,29 @@ class ChallengeProvider extends ChangeNotifier {
   }
   
   // Process challenges and extract today's log status
-  void _processChallenges(List challengesData) {
+  void _processChallenges(List<dynamic> challengesData) {
     _allChallenges = [];
     _activeChallenges = [];
     _todayLogStatus.clear();
     
-    for (final challengeJson in challengesData) {
+    for (final item in challengesData) {
       try {
-        final challenge = Challenge.fromJson(challengeJson);
+        final challenge = Challenge.fromJson(item as Map<String, dynamic>);
         _allChallenges.add(challenge);
         
-        if (challenge.isExpired) continue;
-        
-        // Check if current user is an accepted participant
-        final currentUserParticipant = challenge.currentUserParticipant;
-        if (currentUserParticipant != null && currentUserParticipant.isAccepted) {
-          _activeChallenges.add(challenge);
-          
-          // Check today's log status
-          _todayLogStatus[challenge.id] = challenge.hasCurrentUserLogged;
+        if (!challenge.isExpired) {
+          // Check if current user is an accepted participant
+          final currentUserParticipant = challenge.currentUserParticipant;
+          if (currentUserParticipant != null && currentUserParticipant.isAccepted) {
+            _activeChallenges.add(challenge);
+            
+            // Check today's log status
+            _todayLogStatus[challenge.id] = challenge.hasCurrentUserLogged;
+          }
         }
       } catch (e) {
         print('Error processing challenge: $e');
-        print('Challenge data: $challengeJson');
+        print('Challenge data: $item');
       }
     }
   }

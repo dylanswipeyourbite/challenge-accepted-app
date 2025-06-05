@@ -14,8 +14,8 @@ class ParticipantDailyStatus {
 
   factory ParticipantDailyStatus.fromJson(Map<String, dynamic> json) {
     return ParticipantDailyStatus(
-      participant: Participant.fromJson(json['participant'] as Map<String, dynamic>),
-      hasLoggedToday: json['hasLoggedToday'] as bool,
+      participant: Participant.fromJson(json['participant'] as Map<String, dynamic>? ?? {}),
+      hasLoggedToday: json['hasLoggedToday'] as bool? ?? false,
       lastLogTime: json['lastLogTime'] != null
           ? DateTime.parse(json['lastLogTime'] as String)
           : null,

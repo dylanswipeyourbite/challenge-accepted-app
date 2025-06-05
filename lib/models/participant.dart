@@ -34,12 +34,17 @@ class Participant {
   });
 
   factory Participant.fromJson(Map<String, dynamic> json) {
+    // Generate ID from user ID if not provided
+    final userData = json['user'] as Map<String, dynamic>?;
+    final userId = userData?['id'] as String? ?? '';
+    final participantId = json['id'] as String? ?? json['_id'] as String? ?? userId;
+    
     return Participant(
-      id: json['id'] as String,
-      user: User.fromJson(json['user'] as Map<String, dynamic>),
-      role: ParticipantRole.fromString(json['role'] as String),
+      id: participantId,
+      user: User.fromJson(userData ?? {}),
+      role: ParticipantRole.fromString(json['role'] as String? ?? 'participant'),
       progress: (json['progress'] as num?)?.toDouble() ?? 0.0,
-      status: ParticipantStatus.fromString(json['status'] as String),
+      status: ParticipantStatus.fromString(json['status'] as String? ?? 'pending'),
       joinedAt: json['joinedAt'] != null
           ? DateTime.parse(json['joinedAt'] as String)
           : null,

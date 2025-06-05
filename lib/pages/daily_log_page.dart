@@ -3,6 +3,7 @@ import 'package:challengeaccepted/models/participant.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
+import 'package:challengeaccepted/providers/user_activity_provider.dart';
 import 'package:challengeaccepted/widgets/forms/daily_log_form.dart';
 import 'package:challengeaccepted/widgets/cards/streak_display_card.dart';
 import 'package:challengeaccepted/widgets/cards/rest_day_info_card.dart';
@@ -22,6 +23,25 @@ class ProviderAwareDailyLogPage extends StatelessWidget {
     this.challengeProgress,
     this.onComplete,
   });
+
+  void _handleCompletion(BuildContext context) async {
+    // Store providers before any navigation
+    final challengeProvider = context.read<ChallengeProvider>();
+    final userActivityProvider = context.read<UserActivityProvider>();
+    
+    // Return true to indicate successful logging
+    Navigator.of(context).pop(true);
+    
+    // If there's an external onComplete callback, call it
+    onComplete?.call();
+    
+    // Refresh providers after navigation is complete
+    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.wait([
+      challengeProvider.refresh(),
+      userActivityProvider.refresh(),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,11 +98,7 @@ class ProviderAwareDailyLogPage extends StatelessWidget {
                   challengeId: challengeId,
                   challengeTitle: challenge.title,
                   canTakeRestDay: usedRestDays < allowedRestDays,
-                  onComplete: () {
-                    // Return true to indicate successful logging
-                    Navigator.of(context).pop(true);
-                    onComplete?.call();
-                  },
+                  onComplete: () => _handleCompletion(context),
                 ),
               ],
             ),
@@ -116,6 +132,25 @@ class IntegratedDailyLogPage extends StatelessWidget {
   int get usedRestDays => userParticipant.weeklyRestDaysUsed;
   int get currentStreak => userParticipant.dailyStreak;
 
+  void _handleCompletion(BuildContext context) async {
+    // Store providers before any navigation
+    final challengeProvider = context.read<ChallengeProvider>();
+    final userActivityProvider = context.read<UserActivityProvider>();
+    
+    // Return true to indicate successful logging
+    Navigator.of(context).pop(true);
+    
+    // If there's an external onComplete callback, call it
+    onComplete?.call();
+    
+    // Refresh providers after navigation is complete
+    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.wait([
+      challengeProvider.refresh(),
+      userActivityProvider.refresh(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -148,11 +183,7 @@ class IntegratedDailyLogPage extends StatelessWidget {
               challengeId: challengeId,
               challengeTitle: challengeTitle,
               canTakeRestDay: usedRestDays < allowedRestDays,
-              onComplete: () {
-                // Return true to indicate successful logging
-                Navigator.of(context).pop(true);
-                onComplete?.call();
-              },
+              onComplete: () => _handleCompletion(context),
             ),
           ],
         ),
