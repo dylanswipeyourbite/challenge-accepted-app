@@ -76,7 +76,7 @@ class UserActivityProvider extends ChangeNotifier {
         _error = result.exception?.graphqlErrors.firstOrNull?.message ?? 
                  result.exception.toString();
       } else {
-        final statsData = result.data?['userStats'] as Map<String, dynamic>?;
+        final statsData = result.data?['userStats'];
         if (statsData != null) {
           _userStats = UserStats.fromJson(statsData);
         }
@@ -106,13 +106,22 @@ class UserActivityProvider extends ChangeNotifier {
       );
       
       if (!result.hasException) {
-        final mediaData = result.data?['timelineMedia'] as List<dynamic>? ?? [];
-        _timelineMedia = mediaData
-            .map((json) => Media.fromJson(json as Map<String, dynamic>))
-            .toList();
+        final mediaData = result.data?['timelineMedia'] ?? [];
+        _timelineMedia = [];
+        
+        for (final mediaJson in mediaData) {
+          try {
+            final media = Media.fromJson(mediaJson);
+            _timelineMedia.add(media);
+          } catch (e) {
+            print('Error parsing media item: $e');
+            print('Media data: $mediaJson');
+          }
+        }
       }
     } catch (e) {
       print('Error fetching timeline: $e');
+      _error = e.toString();
     } finally {
       _isLoadingTimeline = false;
       notifyListeners();

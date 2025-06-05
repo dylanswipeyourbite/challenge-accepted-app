@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/challenges_queries.dart';
+import 'package:challengeaccepted/models/challenge.dart';
 
 class ActivitySuccessDialog extends StatelessWidget {
   final int pointsEarned;
@@ -30,7 +31,7 @@ class ActivitySuccessDialog extends StatelessWidget {
       ),
       builder: (result, {refetch, fetchMore}) {
         final remainingChallenges = _calculateRemainingChallenges(result.data);
-        
+
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -68,11 +69,7 @@ class ActivitySuccessDialog extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Icon(
-            Icons.celebration,
-            color: Colors.white,
-            size: 64,
-          ),
+          const Icon(Icons.celebration, color: Colors.white, size: 64),
           const SizedBox(height: 16),
           Text(
             _getMotivationalTitle(),
@@ -112,21 +109,18 @@ class ActivitySuccessDialog extends StatelessWidget {
                 ),
             ],
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Challenge completion info
           Text(
             'Completed: $challengeTitle',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             textAlign: TextAlign.center,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Remaining challenges or completion message
           if (remainingChallenges > 0) ...[
             Container(
@@ -182,7 +176,11 @@ class ActivitySuccessDialog extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.emoji_events, color: Colors.purple, size: 24),
+                      const Icon(
+                        Icons.emoji_events,
+                        color: Colors.purple,
+                        size: 24,
+                      ),
                       const SizedBox(width: 8),
                       const Text(
                         'All done for today!',
@@ -197,10 +195,7 @@ class ActivitySuccessDialog extends StatelessWidget {
                   const SizedBox(height: 8),
                   const Text(
                     'You\'ve crushed all your challenges! 🎉\nTime to inspire your friends!',
-                    style: TextStyle(
-                      color: Colors.purple,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.purple, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -218,12 +213,10 @@ class ActivitySuccessDialog extends StatelessWidget {
       child: Column(
         children: [
           // Inspire friends button
-          _InspireFriendsButton(
-            onPressed: () => _sendInspiration(context),
-          ),
-          
+          _InspireFriendsButton(onPressed: () => _sendInspiration(context)),
+
           const SizedBox(height: 12),
-          
+
           // Primary action button
           SizedBox(
             width: double.infinity,
@@ -234,15 +227,16 @@ class ActivitySuccessDialog extends StatelessWidget {
               },
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: remainingChallenges > 0 ? Colors.green : Colors.blue,
+                backgroundColor:
+                    remainingChallenges > 0 ? Colors.green : Colors.blue,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               child: Text(
-                remainingChallenges > 0 
-                    ? isLastChallenge 
-                        ? 'Continue to Next Challenge' 
+                remainingChallenges > 0
+                    ? isLastChallenge
+                        ? 'Continue to Next Challenge'
                         : 'Back to Home'
                     : 'Back to Home',
                 style: const TextStyle(
@@ -265,7 +259,7 @@ class ActivitySuccessDialog extends StatelessWidget {
       'Consistency Champion! 🏆',
       'Way to Show Up! ⭐',
     ];
-    
+
     // Use points as a simple way to vary the message
     return titles[pointsEarned % titles.length];
   }
@@ -282,47 +276,33 @@ class ActivitySuccessDialog extends StatelessWidget {
 
   int _calculateRemainingChallenges(Map<String, dynamic>? data) {
     if (data == null) return 0;
-    
-    final challenges = data['challenges'] as List<dynamic>? ?? [];
+
+    final challengesData = data['challenges'] ?? [];
     int remaining = 0;
-    
-    for (final challenge in challenges) {
-      if (challenge['status'] == 'expired') continue;
-      
-      final participants = challenge['participants'] as List<dynamic>?;
-      if (participants == null) continue;
-      
+
+    for (final challengeJson in challengesData) {
       try {
-        // Find the current user's participant record
-        final currentUserParticipant = participants.firstWhere(
-          (p) => p['isCurrentUser'] == true && p['status'] == 'accepted',
-        );
-        
-        // Check if user has logged today using todayStatus
-        bool hasLoggedToday = false;
-        final todayStatus = challenge['todayStatus'] as Map<String, dynamic>?;
-        if (todayStatus != null) {
-          final participantsStatus = todayStatus['participantsStatus'] as List?;
-          if (participantsStatus != null) {
-            try {
-              final currentUserStatus = participantsStatus.firstWhere(
-                (status) => status['participant']['isCurrentUser'] == true,
-              );
-              hasLoggedToday = currentUserStatus['hasLoggedToday'] as bool? ?? false;
-            } catch (_) {
-              // Current user not found in today's status
-            }
-          }
+        final challenge = Challenge.fromJson(challengeJson);
+
+        // Skip expired challenges
+        if (challenge.isExpired) continue;
+
+        // Check if current user is an accepted participant
+        final currentUserParticipant = challenge.currentUserParticipant;
+        if (currentUserParticipant == null ||
+            !currentUserParticipant.isAccepted) {
+          continue;
         }
-        
-        if (!hasLoggedToday) {
+
+        // Check if user has logged today
+        if (!challenge.hasCurrentUserLogged) {
           remaining++;
         }
       } catch (_) {
         continue;
       }
     }
-    
+
     return remaining;
   }
 
@@ -367,10 +347,7 @@ class _StatCard extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(
-            color: Colors.grey.shade600,
-            fontSize: 12,
-          ),
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
         ),
       ],
     );
@@ -392,9 +369,7 @@ class _InspireFriendsButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         side: BorderSide(color: Colors.pink.shade300, width: 2),
         foregroundColor: Colors.pink.shade600,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -434,15 +409,12 @@ class _InspireFriendsSheetState extends State<_InspireFriendsSheet> {
               const SizedBox(width: 12),
               const Text(
                 'Send Inspiration',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ],
           ),
           const SizedBox(height: 24),
-          
+
           // Message selection
           const Text(
             'Choose a message:',
@@ -457,7 +429,7 @@ class _InspireFriendsSheetState extends State<_InspireFriendsSheet> {
               itemBuilder: (context, index) {
                 final message = inspirationalMessages[index];
                 final isSelected = selectedMessage == message;
-                
+
                 return Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: InkWell(
@@ -471,14 +443,16 @@ class _InspireFriendsSheetState extends State<_InspireFriendsSheet> {
                       width: 200,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isSelected 
-                            ? Colors.pink.shade50 
-                            : Colors.grey.shade100,
+                        color:
+                            isSelected
+                                ? Colors.pink.shade50
+                                : Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSelected 
-                              ? Colors.pink.shade300 
-                              : Colors.grey.shade300,
+                          color:
+                              isSelected
+                                  ? Colors.pink.shade300
+                                  : Colors.grey.shade300,
                           width: 2,
                         ),
                       ),
@@ -486,12 +460,14 @@ class _InspireFriendsSheetState extends State<_InspireFriendsSheet> {
                         child: Text(
                           message,
                           style: TextStyle(
-                            color: isSelected 
-                                ? Colors.pink.shade700 
-                                : Colors.grey.shade700,
-                            fontWeight: isSelected 
-                                ? FontWeight.bold 
-                                : FontWeight.normal,
+                            color:
+                                isSelected
+                                    ? Colors.pink.shade700
+                                    : Colors.grey.shade700,
+                            fontWeight:
+                                isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -502,16 +478,17 @@ class _InspireFriendsSheetState extends State<_InspireFriendsSheet> {
               },
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Send button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: selectedMessage.isNotEmpty 
-                  ? () => _sendInspiration(context) 
-                  : null,
+              onPressed:
+                  selectedMessage.isNotEmpty
+                      ? () => _sendInspiration(context)
+                      : null,
               icon: const Icon(Icons.send),
               label: const Text('Send Inspiration'),
               style: ElevatedButton.styleFrom(
@@ -531,11 +508,11 @@ class _InspireFriendsSheetState extends State<_InspireFriendsSheet> {
   void _sendInspiration(BuildContext context) {
     // TODO: Implement actual push notification sending
     // For now, just show a success message
-    
+
     HapticFeedback.mediumImpact();
-    
+
     Navigator.of(context).pop();
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(

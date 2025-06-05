@@ -67,7 +67,7 @@ class ChallengeProvider extends ChangeNotifier {
       if (result.hasException) {
         _error = result.exception.toString();
       } else {
-        final challengesData = result.data?['challenges'] as List<dynamic>? ?? [];
+        final challengesData = result.data?['challenges'] ?? [];
         _processChallenges(challengesData);
       }
     } catch (e) {
@@ -91,10 +91,10 @@ class ChallengeProvider extends ChangeNotifier {
       );
       
       if (!result.hasException) {
-        final pendingData = result.data?['pendingChallenges'] as List<dynamic>? ?? [];
-        _pendingChallenges = pendingData
-            .map((json) => Challenge.fromJson(json as Map<String, dynamic>))
-            .toList();
+        final pendingData = result.data?['pendingChallenges'] ?? [];
+        _pendingChallenges = List<Challenge>.from(
+          pendingData.map((json) => Challenge.fromJson(json))
+        );
         notifyListeners();
       }
     } catch (e) {
@@ -103,24 +103,29 @@ class ChallengeProvider extends ChangeNotifier {
   }
   
   // Process challenges and extract today's log status
-  void _processChallenges(List<dynamic> challengesData) {
-    _allChallenges = challengesData
-        .map((json) => Challenge.fromJson(json as Map<String, dynamic>))
-        .toList();
-    
+  void _processChallenges(List challengesData) {
+    _allChallenges = [];
     _activeChallenges = [];
     _todayLogStatus.clear();
     
-    for (final challenge in _allChallenges) {
-      if (challenge.isExpired) continue;
-      
-      // Check if current user is an accepted participant
-      final currentUserParticipant = challenge.currentUserParticipant;
-      if (currentUserParticipant != null && currentUserParticipant.isAccepted) {
-        _activeChallenges.add(challenge);
+    for (final challengeJson in challengesData) {
+      try {
+        final challenge = Challenge.fromJson(challengeJson);
+        _allChallenges.add(challenge);
         
-        // Check today's log status
-        _todayLogStatus[challenge.id] = challenge.hasCurrentUserLogged;
+        if (challenge.isExpired) continue;
+        
+        // Check if current user is an accepted participant
+        final currentUserParticipant = challenge.currentUserParticipant;
+        if (currentUserParticipant != null && currentUserParticipant.isAccepted) {
+          _activeChallenges.add(challenge);
+          
+          // Check today's log status
+          _todayLogStatus[challenge.id] = challenge.hasCurrentUserLogged;
+        }
+      } catch (e) {
+        print('Error processing challenge: $e');
+        print('Challenge data: $challengeJson');
       }
     }
   }

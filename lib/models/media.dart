@@ -32,7 +32,15 @@ class Media {
     this.dailyLog,
   });
 
-  factory Media.fromJson(Map<String, dynamic> json) {
+factory Media.fromJson(Map<String, dynamic> json) {
+    // Add validation for required fields
+    if (json['id'] == null) throw Exception('Media id is required');
+    if (json['challengeId'] == null) throw Exception('Media challengeId is required');
+    if (json['user'] == null) throw Exception('Media user is required');
+    if (json['url'] == null) throw Exception('Media url is required');
+    if (json['type'] == null) throw Exception('Media type is required');
+    if (json['uploadedAt'] == null) throw Exception('Media uploadedAt is required');
+    
     return Media(
       id: json['id'] as String,
       challengeId: json['challengeId'] as String,

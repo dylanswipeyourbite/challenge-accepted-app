@@ -17,9 +17,8 @@ class ActiveChallengeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final challengeStatus = _ChallengeStatus.fromChallenge(challenge);
-    final participants = challenge.participants;
     final acceptedCount = challenge.acceptedParticipantsCount; // Use computed property
-    final timeLimit = challenge.timeLimit;
+
     final daysRemaining = challenge.daysRemaining;
     
     return Container(

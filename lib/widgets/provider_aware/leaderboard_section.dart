@@ -76,7 +76,7 @@ class LeaderboardSection extends StatelessWidget {
                   rank: index + 1,
                   participant: participant,
                 );
-              }).toList(),
+              }),
             ],
           ),
         );

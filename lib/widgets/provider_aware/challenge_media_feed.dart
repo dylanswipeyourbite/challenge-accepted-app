@@ -43,9 +43,9 @@ class ChallengeMediaFeed extends StatelessWidget {
           );
         }
 
-        final mediaList = result.data?['mediaByChallenge'] as List? ?? [];
+        final mediaData = result.data?['mediaByChallenge'] ?? [];
         
-        if (mediaList.isEmpty) {
+        if (mediaData.isEmpty) {
           return SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.all(32),
@@ -83,11 +83,10 @@ class ChallengeMediaFeed extends StatelessWidget {
         return SliverList(
           delegate: SliverChildBuilderDelegate(
             (context, index) {
-              if (index >= mediaList.length) return null;
+              if (index >= mediaData.length) return null;
               
               try {
-                final mediaData = mediaList[index] as Map<String, dynamic>;
-                final media = Media.fromJson(mediaData);
+                final media = Media.fromJson(mediaData[index]);
                 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
@@ -113,7 +112,7 @@ class ChallengeMediaFeed extends StatelessWidget {
                 );
               }
             },
-            childCount: mediaList.length > 5 ? 5 : mediaList.length,
+            childCount: mediaData.length > 5 ? 5 : mediaData.length,
           ),
         );
       },

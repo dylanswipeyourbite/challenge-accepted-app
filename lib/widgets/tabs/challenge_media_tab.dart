@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/media_queries.dart';
+import 'package:challengeaccepted/models/media.dart';
 import 'package:challengeaccepted/widgets/lists/challenge_media_list.dart';
 import 'package:challengeaccepted/widgets/common/loading_indicator.dart';
 import 'package:challengeaccepted/widgets/common/error_message.dart';
@@ -39,7 +40,10 @@ class ChallengeMediaTab extends StatelessWidget {
           );
         }
 
-        final mediaList = result.data?['mediaByChallenge'] as List<dynamic>? ?? [];
+        final mediaData = result.data?['mediaByChallenge'] ?? [];
+        final mediaList = mediaData
+            .map((json) => Media.fromJson(json))
+            .toList();
 
         return Padding(
           padding: const EdgeInsets.all(16),

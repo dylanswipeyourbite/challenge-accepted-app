@@ -1,9 +1,10 @@
 // lib/widgets/lists/challenge_media_grid.dart
 
 import 'package:flutter/material.dart';
+import 'package:challengeaccepted/models/media.dart';
 
 class ChallengeMediaGrid extends StatelessWidget {
-  final List<dynamic> mediaList;
+  final List<Media> mediaList;
 
   const ChallengeMediaGrid({
     super.key,
@@ -28,7 +29,7 @@ class ChallengeMediaGrid extends StatelessWidget {
         mainAxisSpacing: 8,
       ),
       itemBuilder: (context, index) {
-        final media = mediaList[index] as Map<String, dynamic>;
+        final media = mediaList[index];
         return MediaGridItem(media: media);
       },
     );
@@ -36,7 +37,7 @@ class ChallengeMediaGrid extends StatelessWidget {
 }
 
 class MediaGridItem extends StatelessWidget {
-  final Map<String, dynamic> media;
+  final Media media;
 
   const MediaGridItem({
     super.key,
@@ -45,9 +46,6 @@ class MediaGridItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = media['url'] as String;
-    final type = media['type'] as String;
-
     return GestureDetector(
       onTap: () => _showMediaPreview(context),
       child: Stack(
@@ -56,7 +54,7 @@ class MediaGridItem extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.network(
-              url,
+              media.url,
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
@@ -75,7 +73,7 @@ class MediaGridItem extends StatelessWidget {
               ),
             ),
           ),
-          if (type == 'video')
+          if (media.type == MediaType.video)
             Container(
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.3),
@@ -102,7 +100,7 @@ class MediaGridItem extends StatelessWidget {
 }
 
 class MediaPreviewDialog extends StatelessWidget {
-  final Map<String, dynamic> media;
+  final Media media;
 
   const MediaPreviewDialog({
     super.key,
@@ -111,10 +109,6 @@ class MediaPreviewDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = media['url'] as String;
-    final type = media['type'] as String;
-    final caption = media['caption'] as String?;
-
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Column(
@@ -124,9 +118,9 @@ class MediaPreviewDialog extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: type == 'photo'
+                child: media.type == MediaType.photo
                     ? Image.network(
-                        url,
+                        media.url,
                         fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) => Container(
                           color: Colors.grey.shade200,
@@ -142,7 +136,7 @@ class MediaPreviewDialog extends StatelessWidget {
                         alignment: Alignment.center,
                         children: [
                           Image.network(
-                            url,
+                            media.url,
                             fit: BoxFit.contain,
                           ),
                           const Icon(
@@ -166,7 +160,7 @@ class MediaPreviewDialog extends StatelessWidget {
               ),
             ],
           ),
-          if (caption != null && caption.isNotEmpty) ...[
+          if (media.caption != null && media.caption!.isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
@@ -175,7 +169,7 @@ class MediaPreviewDialog extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                caption,
+                media.caption!,
                 style: const TextStyle(fontSize: 14),
                 textAlign: TextAlign.center,
               ),
