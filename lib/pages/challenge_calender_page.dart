@@ -4,7 +4,6 @@ import 'package:challengeaccepted/models/challenge_enums.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
-import 'package:provider/provider.dart';
 import 'package:challengeaccepted/models/daily_log.dart';
 
 class ChallengeCalendarPage extends StatefulWidget {
@@ -238,7 +237,7 @@ class _ChallengeCalendarPageState extends State<ChallengeCalendarPage> {
               description: 'No activity logged',
             ),
             _LegendItem(
-              color: Colors.gold,
+              color: Colors.yellow,
               label: 'Personal Record',
               description: 'Achieved a milestone',
             ),

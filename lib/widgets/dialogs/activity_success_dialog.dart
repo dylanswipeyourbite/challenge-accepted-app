@@ -293,11 +293,6 @@ class ActivitySuccessDialog extends StatelessWidget {
       if (participants == null) continue;
       
       try {
-        // Find the current user's participant record
-        final currentUserParticipant = participants.firstWhere(
-          (p) => p['isCurrentUser'] == true && p['status'] == 'accepted',
-        );
-        
         // Check if user has logged today using todayStatus
         bool hasLoggedToday = false;
         final todayStatus = challenge['todayStatus'] as Map<String, dynamic>?;

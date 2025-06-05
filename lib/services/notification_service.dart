@@ -1,7 +1,9 @@
 // File: lib/services/notification_service.dart
 
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
@@ -13,31 +15,34 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   
   Future<void> initialize() async {
+    // Initialize timezone database
+    tz.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('UTC'));
+    
     // Request permissions
-    await _fcm.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
+    await _fcm.requestPermission();
+    
+    // Configure local notifications
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
     );
     
-    // Initialize local notifications
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings();
-    const settings = InitializationSettings(
+    const initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
     
     await _localNotifications.initialize(
-      settings,
+      initSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
     
-    // Handle background messages
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-    
-    // Handle foreground messages
+    // Setup Firebase messaging handlers
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     
     // Schedule daily reminders
     await scheduleDailyReminders();
@@ -119,6 +124,7 @@ class NotificationService {
           priority: Priority.max,
           color: Colors.red,
         ),
+        iOS: DarwinNotificationDetails(),
       ),
     );
   }
@@ -137,6 +143,7 @@ class NotificationService {
           priority: Priority.high,
           color: Colors.green,
         ),
+        iOS: DarwinNotificationDetails(),
       ),
     );
   }
@@ -154,6 +161,7 @@ class NotificationService {
           importance: Importance.defaultImportance,
           priority: Priority.defaultPriority,
         ),
+        iOS: DarwinNotificationDetails(),
       ),
     );
   }
@@ -180,13 +188,15 @@ class NotificationService {
             'Default',
             channelDescription: 'Default notification channel',
           ),
+          iOS: DarwinNotificationDetails(),
         ),
       );
     }
   }
 }
 
-// Background message handler
+// Background message handler - must be top-level function
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Handle background messages
+  print('Handling background message: ${message.messageId}');
 }

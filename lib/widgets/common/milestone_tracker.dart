@@ -108,7 +108,7 @@ class _MilestoneCard extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  milestone.icon,
+                  milestone.name,
                   style: const TextStyle(fontSize: 24),
                 ),
                 const Spacer(),
@@ -121,7 +121,7 @@ class _MilestoneCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              milestone.title,
+              milestone.name,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: isAchieved ? Colors.white : Colors.black87,
@@ -131,7 +131,7 @@ class _MilestoneCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              milestone.description,
+              milestone.name,
               style: TextStyle(
                 fontSize: 12,
                 color: isAchieved ? Colors.white70 : Colors.grey.shade600,

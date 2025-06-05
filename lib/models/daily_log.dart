@@ -1,5 +1,6 @@
 // lib/models/daily_log.dart
 import 'package:challengeaccepted/models/challenge_enums.dart';
+import 'package:challengeaccepted/models/media.dart';
 
 class DailyLog {
   final String id;
@@ -12,6 +13,7 @@ class DailyLog {
   final DateTime date;
   final int points;
   final DateTime createdAt;
+  final List<Media>? media;
 
   const DailyLog({
     required this.id,
@@ -24,6 +26,7 @@ class DailyLog {
     required this.date,
     required this.points,
     required this.createdAt,
+    this.media,
   });
 
   factory DailyLog.fromJson(Map<String, dynamic> json) {
@@ -40,6 +43,9 @@ class DailyLog {
       date: DateTime.parse(json['date'] as String),
       points: json['points'] as int,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      media: (json['media'] as List<dynamic>?)
+          ?.map((m) => Media.fromJson(m as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -55,7 +61,7 @@ class DailyLog {
       'date': date.toIso8601String(),
       'points': points,
       'createdAt': createdAt.toIso8601String(),
+      'media': media?.map((m) => m.toJson()).toList(),
     };
   }
 }
-

@@ -462,7 +462,7 @@ class _MilestoneCard extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            milestone.icon,
+            milestone.name,
             style: const TextStyle(fontSize: 40),
           ),
           const SizedBox(width: 16),
@@ -471,7 +471,7 @@ class _MilestoneCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  milestone.title,
+                  milestone.name,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -480,7 +480,7 @@ class _MilestoneCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  milestone.description,
+                  milestone.description ?? '',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
