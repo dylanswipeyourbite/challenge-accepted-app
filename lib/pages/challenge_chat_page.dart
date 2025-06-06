@@ -202,9 +202,10 @@ class _ChallengeChatPageState extends State<ChallengeChatPage> {
                 }
                 
                 final messagesData = result.data?['chatMessages'] ?? [];
-                final messages = messagesData
-                    .map((json) => ChatMessage.fromJson(json))
+                final messages = (messagesData as List<dynamic>)
+                    .map((json) => ChatMessage.fromJson(json as Map<String, dynamic>))
                     .toList()
+                    .cast<ChatMessage>()
                     .reversed
                     .toList();
                 

@@ -6,7 +6,6 @@ import 'package:challengeaccepted/providers/challenge_provider.dart';
 import 'package:challengeaccepted/services/gamification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:challengeaccepted/widgets/dialogs/enhanced_success_dialog.dart';
-import 'package:challengeaccepted/services/badge_service_integration.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/providers/user_activity_provider.dart';
 
