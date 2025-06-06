@@ -1,18 +1,25 @@
+// lib/providers/app_providers.dart - Updated to include services
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
 import 'package:challengeaccepted/providers/user_activity_provider.dart';
+import 'package:challengeaccepted/services/gamification_service.dart';
+import 'package:challengeaccepted/services/notification_service.dart';
 
-// Combined provider that initializes with GraphQL client
+// Combined provider that initializes with GraphQL client and services
 class AppProviders extends StatelessWidget {
   final Widget child;
   final GraphQLClient client;
+  final GamificationService gamificationService;
+  final NotificationService notificationService;
   
   const AppProviders({
     super.key,
     required this.child,
     required this.client,
+    required this.gamificationService,
+    required this.notificationService,
   });
   
   @override
@@ -33,7 +40,9 @@ class AppProviders extends StatelessWidget {
             return provider;
           },
         ),
-        // Keep existing providers if any
+        // Provide services
+        Provider.value(value: gamificationService),
+        Provider.value(value: notificationService),
         Provider.value(value: client),
       ],
       child: GraphQLProvider(
@@ -65,6 +74,7 @@ class _DataInitializerState extends State<DataInitializer> {
       try {
         final challengeProvider = context.read<ChallengeProvider>();
         final userActivityProvider = context.read<UserActivityProvider>();
+        final notificationService = context.read<NotificationService>();
         
         // Fetch data in parallel
         await Future.wait([
@@ -72,6 +82,7 @@ class _DataInitializerState extends State<DataInitializer> {
           challengeProvider.fetchPendingChallenges(),
           userActivityProvider.fetchUserStats(),
           userActivityProvider.fetchTimelineMedia(),
+          notificationService.syncFCMToken(), // Sync FCM token with backend
         ]);
       } catch (e) {
         print('Error initializing data: $e');
@@ -89,6 +100,8 @@ class _DataInitializerState extends State<DataInitializer> {
 extension BuildContextProviders on BuildContext {
   ChallengeProvider get challengeProvider => read<ChallengeProvider>();
   UserActivityProvider get userActivityProvider => read<UserActivityProvider>();
+  GamificationService get gamificationService => read<GamificationService>();
+  NotificationService get notificationService => read<NotificationService>();
   
   ChallengeProvider watchChallengeProvider() => watch<ChallengeProvider>();
   UserActivityProvider watchUserActivityProvider() => watch<UserActivityProvider>();

@@ -1,3 +1,4 @@
+import 'package:challengeaccepted/pages/notifications_page.dart';
 import 'package:challengeaccepted/pages/settings_page.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
 import 'package:challengeaccepted/providers/user_activity_provider.dart';
@@ -46,6 +47,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with WidgetsBindi
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
+          const NotificationBell(),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: GestureDetector(
@@ -84,6 +86,42 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with WidgetsBindi
           ),
         ),
       ),
+    );
+  }
+}
+
+// Notification Bell widget
+class NotificationBell extends StatelessWidget {
+  const NotificationBell({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const NotificationsPage(),
+              ),
+            );
+          },
+        ),
+        // Badge for unread notifications
+        Positioned(
+          right: 8,
+          top: 8,
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Colors.red,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

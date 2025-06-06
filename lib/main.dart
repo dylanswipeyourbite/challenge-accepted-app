@@ -1,7 +1,9 @@
+// lib/main.dart - Updated to initialize services
 import 'package:challengeaccepted/pages/homepage.dart';
 import 'package:challengeaccepted/pages/login_page.dart';
 import 'package:challengeaccepted/providers/app_providers.dart';
 import 'package:challengeaccepted/services/notification_service.dart';
+import 'package:challengeaccepted/services/gamification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -13,24 +15,46 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await initHiveForFlutter();
-  await NotificationService().initialize();
   
   // Initialize timezone for notifications
   tz.initializeTimeZones();
+  
+  // Create GraphQL client
   final graphQLClient = await createClient();
+  
+  // Initialize services with GraphQL client
+  final gamificationService = GamificationService();
+  gamificationService.setClient(graphQLClient);
+  
+  final notificationService = NotificationService();
+  notificationService.setClient(graphQLClient);
+  await notificationService.initialize();
 
-  runApp(MyApp(client: graphQLClient));
+  runApp(MyApp(
+    client: graphQLClient,
+    gamificationService: gamificationService,
+    notificationService: notificationService,
+  ));
 }
 
 class MyApp extends StatelessWidget {
   final GraphQLClient client;
+  final GamificationService gamificationService;
+  final NotificationService notificationService;
 
-  const MyApp({super.key, required this.client});
+  const MyApp({
+    super.key,
+    required this.client,
+    required this.gamificationService,
+    required this.notificationService,
+  });
 
   @override
   Widget build(BuildContext context) {
     return AppProviders(
       client: client,
+      gamificationService: gamificationService,
+      notificationService: notificationService,
       child: MaterialApp(
         title: 'Challenge Accepted',
         debugShowCheckedModeBanner: false,
