@@ -55,7 +55,7 @@ class ChallengeMilestone {
       'id': id,
       'name': name,
       'type': type,
-      'target': target,  // Make sure backend expects 'target' not 'targetValue'
+      'targetValue': target,
       'description': description,
     };
   }

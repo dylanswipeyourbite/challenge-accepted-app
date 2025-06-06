@@ -161,7 +161,7 @@ class _ActivityTypeDropdown extends StatelessWidget {
     required this.onChanged,
   });
 
-  static const _activityTypes = ['running', 'cycling', 'workout', 'other'];
+  static const _activityTypes = ['running', 'cycling', 'swimming', 'gym','yoga', 'walking', 'hiking', 'other'];
 
   @override
   Widget build(BuildContext context) {

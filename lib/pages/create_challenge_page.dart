@@ -39,7 +39,7 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
   int _creatorRestDays = 1;
   bool _requireDailyPhoto = false;
   bool _allowRestDays = true;
-  List<String> _allowedActivities = ['Running', 'Cycling', 'Gym', 'Other'];
+  List<String> _allowedActivities = ['running', 'cycling', 'swimming', 'gym','yoga', 'walking', 'hiking', 'other'];
   final List<String> _selectedUserIds = [];
   final List<ChallengeMilestone> _milestones = [];
 
@@ -244,7 +244,7 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
               labelText: 'Sport Category',
               border: OutlineInputBorder(),
             ),
-            items: ['workout', 'running', 'cycling', 'swimming', 'yoga', 'other']
+            items: ['running', 'cycling', 'swimming', 'gym','yoga', 'walking', 'hiking', 'other']
                 .map((sport) => DropdownMenuItem(
                       value: sport,
                       child: Text(sport[0].toUpperCase() + sport.substring(1)),
@@ -942,69 +942,69 @@ void _applyTemplate(ChallengeTemplate template) {
     }
   }
   
-// In the _createChallenge method, update the input object structure:
-Future<void> _createChallenge() async {
-  final client = GraphQLProvider.of(context).value;
-  
-  // Prepare the input with correct field names
-  final input = {
-    'title': _nameController.text,
-    'description': _descriptionController.text,
-    'rules': _rules.join('\n'), // Convert array to string with newlines
-    'sport': _sport,
-    'type': _type,
-    'startDate': _startDate?.toIso8601String(),
-    'timeLimit': _endDate?.toIso8601String(), // Backend expects 'timeLimit'
-    'minWeeklyActivities': _minWeeklyActivities,
-    'minPointsToJoin': _minPointsToJoin,
-    'creatorRestDays': _creatorRestDays,
-    'requireDailyPhoto': _requireDailyPhoto,
-    'allowedActivities': _allowedActivities,
-    'wager': _wagerController.text.isEmpty ? null : _wagerController.text,
-    'template': _selectedTemplate?.id, // Backend expects 'template', not 'templateId'
-    'milestones': _milestones.map((m) => {
-      'title': m.name, // Backend expects 'title'
-      'description': m.description,
-      'type': m.type,
-      'targetValue': m.target, // Backend expects 'targetValue'
-      'icon': '🎯', // Add default icon
-      'reward': null, // Optional field
-    }).toList(),
-    'participantIds': _selectedUserIds,
-    'enableReminders': true, // Add this field
-  };
-  
-  try {
-    final result = await client.mutate(
-      MutationOptions(
-        document: gql(ChallengeMutations.createChallenge),
-        variables: {'input': input},
-      ),
-    );
+  // In the _createChallenge method, update the input object structure:
+  Future<void> _createChallenge() async {
+    final client = GraphQLProvider.of(context).value;
     
-    if (!result.hasException && mounted) {
-      // Refresh providers
-      context.read<ChallengeProvider>().fetchChallenges();
-      
-      Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🎉 Challenge created successfully!')),
+    // Prepare the input with correct field names
+    final input = {
+      'title': _nameController.text,
+      'description': _descriptionController.text,
+      'rules': _rules, // Send as array, backend now expects array
+      'sport': _sport,
+      'type': _type,
+      'startDate': _startDate?.toIso8601String(),
+      'timeLimit': _endDate?.toIso8601String(), // Backend expects 'timeLimit'
+      'minWeeklyActivities': _minWeeklyActivities,
+      'minPointsToJoin': _minPointsToJoin,
+      'creatorRestDays': _creatorRestDays,
+      'requireDailyPhoto': _requireDailyPhoto,
+      'allowedActivities': _allowedActivities,
+      'wager': _wagerController.text.isEmpty ? null : _wagerController.text,
+      'template': _selectedTemplate?.id, // Backend expects 'template', not 'templateId'
+      'milestones': _milestones.map((m) => {
+        'title': m.name, // Backend expects 'title'
+        'description': m.description,
+        'type': m.type,
+        'targetValue': m.target, // Backend expects 'targetValue'
+        'icon': '🎯', // Add default icon
+        'reward': null, // Optional field
+      }).toList(),
+      'participantIds': _selectedUserIds,
+      'enableReminders': true, // Add this field
+    };
+    
+    try {
+      final result = await client.mutate(
+        MutationOptions(
+          document: gql(ChallengeMutations.createChallenge),
+          variables: {'input': input},
+        ),
       );
-    } else if (result.hasException) {
+      
+      if (!result.hasException && mounted) {
+        // Refresh providers
+        context.read<ChallengeProvider>().fetchChallenges();
+        
+        Navigator.of(context).pop(true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('🎉 Challenge created successfully!')),
+        );
+      } else if (result.hasException) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${result.exception.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: ${result.exception.toString()}'),
+          content: Text('Error: $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error: $e'),
-        backgroundColor: Colors.red,
-      ),
-    );
   }
-}
 }

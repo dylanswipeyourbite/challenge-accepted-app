@@ -255,7 +255,7 @@ class ChallengeTemplate {
     return {
       'title': name,  // Map 'name' to 'title' for backend
       'description': description,
-      'rules': defaultRules,
+      'rules': defaultRules, // Send as array, backend now expects array
       'milestones': suggestedMilestones.map((m) => m.toMap()).toList(),
       'duration': suggestedDuration,
       'allowedActivities': activityTypes,  // Map 'activityTypes' to 'allowedActivities'

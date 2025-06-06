@@ -4,7 +4,12 @@ import 'package:flutter/material.dart';
 enum SportType {
   running('running'),
   cycling('cycling'),
-  workout('workout');
+  swimming('swimming'),
+  gym('gym'),
+  yoga('yoga'),
+  walking('walking'),
+  hiking('hiking'),
+  other('other');
 
   final String value;
   const SportType(this.value);
@@ -12,7 +17,7 @@ enum SportType {
   static SportType fromString(String value) {
     return SportType.values.firstWhere(
       (e) => e.value == value,
-      orElse: () => SportType.workout,
+      orElse: () => SportType.other,
     );
   }
 
@@ -22,7 +27,17 @@ enum SportType {
         return Icons.directions_run;
       case SportType.cycling:
         return Icons.directions_bike;
-      case SportType.workout:
+      case SportType.gym:
+        return Icons.sports_gymnastics;
+      case SportType.swimming:
+        return Icons.water;
+      case SportType.yoga:
+        return Icons.self_improvement;
+      case SportType.walking:
+        return Icons.nordic_walking;
+      case SportType.hiking:
+        return Icons.hiking;
+      case SportType.other:
         return Icons.fitness_center;
     }
   }
@@ -33,8 +48,18 @@ enum SportType {
         return Colors.orange;
       case SportType.cycling:
         return Colors.blue;
-      case SportType.workout:
-        return Colors.purple;
+      case SportType.gym:
+        return Colors.orange;
+      case SportType.swimming:
+        return Colors.orange;
+      case SportType.yoga:
+        return Colors.orange;
+      case SportType.walking:
+        return Colors.orange;
+      case SportType.hiking:
+        return Colors.orange;
+      case SportType.other:
+        return Colors.orange;
     }
   }
 }
@@ -132,7 +157,11 @@ enum LogType {
 enum ActivityType {
   running('running'),
   cycling('cycling'),
-  workout('workout'),
+  swimming('swimming'),
+  gym('gym'),
+  yoga('yoga'),
+  walking('walking'),
+  hiking('hiking'),
   other('other');
 
   final String value;

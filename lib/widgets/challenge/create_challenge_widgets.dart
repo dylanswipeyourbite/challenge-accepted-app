@@ -114,10 +114,10 @@ class SportSelector extends StatelessWidget {
   final Function(String) onChanged;
 
   const SportSelector({
-    Key? key,
+    super.key,
     required this.value,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +127,7 @@ class SportSelector extends StatelessWidget {
       'cycling': {'icon': Icons.directions_bike, 'label': 'Cycling'},
       'swimming': {'icon': Icons.pool, 'label': 'Swimming'},
       'yoga': {'icon': Icons.self_improvement, 'label': 'Yoga'},
+      'hiking': {'icon': Icons.hiking, 'label': 'Hiking'},
       'other': {'icon': Icons.sports, 'label': 'Other'},
     };
 
@@ -443,10 +444,10 @@ class ActivityTypeSelector extends StatelessWidget {
   final Function(List<String>) onChanged;
 
   const ActivityTypeSelector({
-    Key? key,
+    super.key,
     required this.selectedActivities,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
