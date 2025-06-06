@@ -175,7 +175,6 @@ class TypeSelector extends StatelessWidget {
       items: const [
         DropdownMenuItem(value: 'competitive', child: Text('Competitive')),
         DropdownMenuItem(value: 'collaborative', child: Text('Collaborative')),
-        DropdownMenuItem(value: 'personal', child: Text('Personal')),
       ],
       onChanged: (val) {
         if (val != null) onChanged(val);

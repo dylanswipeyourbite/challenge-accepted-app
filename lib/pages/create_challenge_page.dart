@@ -261,7 +261,7 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
               labelText: 'Challenge Type',
               border: OutlineInputBorder(),
             ),
-            items: ['competitive', 'collaborative', 'personal']
+            items: ['competitive', 'collaborative']
                 .map((type) => DropdownMenuItem(
                       value: type,
                       child: Text(type[0].toUpperCase() + type.substring(1)),

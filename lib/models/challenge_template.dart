@@ -42,7 +42,7 @@ class ChallengeTemplate {
     category: 'Running',
     icon: Icons.directions_run,
     sport: 'running',  // Add this
-    type: 'personal',  // Add this
+    type: 'collaborative',  // Add this
     minWeeklyActivities: 4,  // Add this
     defaultRules: [
       'Run at least 4 times per week',
@@ -128,7 +128,7 @@ class ChallengeTemplate {
     category: 'Health',
     icon: Icons.monitor_weight,
     sport: 'workout',  // Add this
-    type: 'personal',  // Add this
+    type: 'collaborative',  // Add this
     minWeeklyActivities: 5,  // Add this
     defaultRules: [
       'Exercise at least 5 days per week',
@@ -171,7 +171,7 @@ class ChallengeTemplate {
     category: 'Mindfulness',
     icon: Icons.self_improvement,
     sport: 'yoga',  // Add this
-    type: 'personal',  // Add this
+    type: 'collaborative',  // Add this
     minWeeklyActivities: 7,  // Add this (daily practice)
     defaultRules: [
       'Practice yoga daily',
@@ -214,7 +214,7 @@ class ChallengeTemplate {
     category: 'Cycling',
     icon: Icons.directions_bike,
     sport: 'cycling',  // Add this
-    type: 'personal',  // Add this
+    type: 'collaborative',  // Add this
     minWeeklyActivities: 3,  // Add this
     defaultRules: [
       'Ride at least 3 times per week',
