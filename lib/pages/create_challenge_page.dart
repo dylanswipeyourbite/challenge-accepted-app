@@ -1,351 +1,1010 @@
+import 'package:challengeaccepted/graphql/mutations/challenge_mutations.dart';
+import 'package:challengeaccepted/providers/challenge_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:intl/intl.dart';
+import 'package:challengeaccepted/models/challenge_template.dart';
+import 'package:challengeaccepted/models/challenge_milestone.dart';
+import 'package:challengeaccepted/widgets/forms/challenge_rules_editor.dart';
+import 'package:provider/provider.dart';
 
-class CreateChallengePage extends StatelessWidget {
+class CreateChallengePage extends StatefulWidget {
   const CreateChallengePage({super.key});
+
+  @override
+  State<CreateChallengePage> createState() => _CreateChallengePageState();
+}
+
+class _CreateChallengePageState extends State<CreateChallengePage> {
+  final PageController _pageController = PageController();
+  final _formKey = GlobalKey<FormState>();
+  int _currentStep = 0;
+  
+  // Controllers
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _minPointsController = TextEditingController();
+  final TextEditingController _restDaysController = TextEditingController(text: '2');
+  final TextEditingController _wagerController = TextEditingController();
+  
+  // Form data with proper types
+  ChallengeTemplate? _selectedTemplate;
+  List<String> _rules = [];
+  String _sport = 'workout';
+  String _type = 'competitive';
+  DateTime? _startDate = DateTime.now().add(const Duration(days: 1));
+  DateTime? _endDate = DateTime.now().add(const Duration(days: 30));
+  int _minWeeklyActivities = 4;
+  int _minPointsToJoin = 0;
+  int _creatorRestDays = 1;
+  bool _requireDailyPhoto = false;
+  bool _allowRestDays = true;
+  List<String> _allowedActivities = ['Running', 'Cycling', 'Gym', 'Other'];
+  final List<String> _selectedUserIds = [];
+  final List<ChallengeMilestone> _milestones = [];
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _minPointsController.dispose();
+    _restDaysController.dispose();
+    _wagerController.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create a Challenge')),
-      body: const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: CreateChallengeForm(),
+      appBar: AppBar(
+        title: Text('Create Challenge (Step ${_currentStep + 1}/5)'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(4),
+          child: LinearProgressIndicator(
+            value: (_currentStep + 1) / 5,
+            backgroundColor: Colors.grey.shade300,
+          ),
+        ),
+      ),
+      body: Form(
+        key: _formKey,
+        child: PageView(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            _buildTemplateSelectionStep(),
+            _buildBasicInfoStep(),
+            _buildRulesStep(),
+            _buildRequirementsStep(),
+            _buildReviewStep(),
+          ],
+        ),
+      ),
+      bottomNavigationBar: _buildNavigationButtons(),
+    );
+  }
+  
+  Widget _buildTemplateSelectionStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Choose a Template or Start Fresh',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Templates help you get started quickly with proven challenge formats',
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 24),
+          
+          // Custom challenge option
+          Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: _selectedTemplate == null 
+                    ? Theme.of(context).primaryColor 
+                    : Colors.grey.shade300,
+                child: const Icon(Icons.edit, color: Colors.white),
+              ),
+              title: const Text('Custom Challenge'),
+              subtitle: const Text('Create your own unique challenge'),
+              selected: _selectedTemplate == null,
+              onTap: () => setState(() => _selectedTemplate = null),
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          const Text(
+            'Popular Templates',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          
+          ...ChallengeTemplate.popularTemplates.map((template) =>
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: _selectedTemplate == template 
+                        ? Theme.of(context).primaryColor 
+                        : Colors.grey.shade300,
+                    child: Icon(template.icon, color: Colors.white),
+                  ),
+                  title: Text(template.name),
+                  subtitle: Text(template.description),
+                  selected: _selectedTemplate == template,
+                  onTap: () => setState(() {
+                    _selectedTemplate = template;
+                    _applyTemplate(template);
+                  }),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
-}
-
-class CreateChallengeForm extends StatefulWidget {
-  const CreateChallengeForm({super.key});
-
-  @override
-  State<CreateChallengeForm> createState() => _CreateChallengeFormState();
-}
-
-class _CreateChallengeFormState extends State<CreateChallengeForm> {
-  static const String createChallengeMutation = """
-    mutation CreateChallenge(\$input: CreateChallengeInput!) {
-      createChallenge(input: \$input) {
-        id
-        title
-        description
-        status
-        sport
-        type
-        startDate
-        timeLimit
-        milestones {
-          id
-          title
-          description
-          type
-          targetValue
-          icon
-        }
-        participants {
-          id
-          user {
-            id
-            displayName
-            avatarUrl
-          }
-          role
-          status
-          restDays
-        }
-      }
-    }
-  """;
-
-  String _title = '';
-  String _sport = 'running';
-  String _type = 'competitive';
-  DateTime _startDate = DateTime.now();
-  DateTime _timeLimit = DateTime.now().add(const Duration(days: 30));
-  String _wager = '';
-  final List<String> _selectedUserIds = [];
-
-  final List<String> mockUsers = ['user1', 'user2', 'user3'];
-
-  @override
-  Widget build(BuildContext context) {
-    return Mutation(
-      options: MutationOptions(
-        document: gql(createChallengeMutation),
-        onCompleted: (data) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("🎉 Challenge created!")),
-          );
-          Navigator.of(context).pop(); // go back or reset form
-        },
-        onError: (error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error: ${error?.graphqlErrors.first.message}")),
-          );
-        },
-      ),
-      builder: (runMutation, result) {
-        return SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  
+  Widget _buildBasicInfoStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Basic Information',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 24),
+          TextFormField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+              labelText: 'Challenge Name',
+              hintText: 'e.g., 30-Day Fitness Challenge',
+              border: OutlineInputBorder(),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a challenge name';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _descriptionController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Description',
+              hintText: 'Describe your challenge...',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
             children: [
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Challenge Title',
-                  hintText: 'e.g., Summer 5K Challenge',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (val) => setState(() => _title = val),
-              ),
-              const SizedBox(height: 16),
-
-              DropdownButtonFormField<String>(
-                value: _sport,
-                decoration: const InputDecoration(
-                  labelText: 'Sport',
-                  border: OutlineInputBorder(),
-                ),
-                items: ['running', 'cycling', 'workout'].map((sport) {
-                  final icons = {
-                    'running': Icons.directions_run,
-                    'cycling': Icons.directions_bike,
-                    'workout': Icons.fitness_center,
-                  };
-                  return DropdownMenuItem(
-                    value: sport,
+              Expanded(
+                child: InkWell(
+                  onTap: () => _selectDate(true),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Start Date',
+                      border: OutlineInputBorder(),
+                    ),
                     child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(icons[sport], size: 20),
-                        const SizedBox(width: 8),
-                        Text(sport.toUpperCase()),
+                        Text(
+                          _startDate != null
+                              ? DateFormat('MMM dd, yyyy').format(_startDate!)
+                              : 'Select date',
+                        ),
+                        const Icon(Icons.calendar_today),
                       ],
                     ),
-                  );
-                }).toList(),
-                onChanged: (val) => setState(() => _sport = val!),
-              ),
-              const SizedBox(height: 16),
-
-              const Text('Challenge Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: ChoiceChip(
-                      label: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.emoji_events, size: 18),
-                          SizedBox(width: 4),
-                          Text('Competitive'),
-                        ],
-                      ),
-                      selected: _type == 'competitive',
-                      onSelected: (_) => setState(() => _type = 'competitive'),
-                    ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.group, size: 18),
-                          SizedBox(width: 4),
-                          Text('Collaborative'),
-                        ],
-                      ),
-                      selected: _type == 'collaborative',
-                      onSelected: (_) => setState(() => _type = 'collaborative'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: InkWell(
+                  onTap: () => _selectDate(false),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'End Date',
+                      border: OutlineInputBorder(),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // START DATE PICKER
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.play_circle_outline, color: Colors.green),
-                  title: const Text('Start Date'),
-                  subtitle: Text(
-                    '${_startDate.toLocal().toString().split(' ')[0]}',
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _startDate,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 30)),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        _startDate = picked;
-                        // Ensure end date is after start date
-                        if (_timeLimit.isBefore(_startDate)) {
-                          _timeLimit = _startDate.add(const Duration(days: 30));
-                        }
-                      });
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // END DATE PICKER
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.flag, color: Colors.red),
-                  title: const Text('End Date'),
-                  subtitle: Text(
-                    '${_timeLimit.toLocal().toString().split(' ')[0]}',
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _timeLimit,
-                      firstDate: _startDate.add(const Duration(days: 1)),
-                      lastDate: _startDate.add(const Duration(days: 365)),
-                    );
-                    if (picked != null) setState(() => _timeLimit = picked);
-                  },
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Duration display
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.timer, color: Colors.blue.shade700),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Duration: ${_timeLimit.difference(_startDate).inDays} days',
-                      style: TextStyle(
-                        color: Colors.blue.shade700,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Wager (optional)',
-                  hintText: 'e.g., Loser buys coffee ☕',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.local_offer),
-                ),
-                onChanged: (val) => setState(() => _wager = val),
-              ),
-              const SizedBox(height: 16),
-
-              const Text(
-                'Select Participants',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  children: mockUsers.map((userId) => CheckboxListTile(
-                    title: Text(userId),
-                    subtitle: Text('Last active: 2 days ago'),
-                    value: _selectedUserIds.contains(userId),
-                    onChanged: (selected) {
-                      setState(() {
-                        if (selected!) {
-                          _selectedUserIds.add(userId);
-                        } else {
-                          _selectedUserIds.remove(userId);
-                        }
-                      });
-                    },
-                  )).toList(),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              
-              // Challenge preview
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Challenge Preview',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text('📍 ${_sport.toUpperCase()} • ${_type.toUpperCase()}'),
-                    Text('📅 Starts: ${_startDate.toLocal().toString().split(' ')[0]}'),
-                    Text('🏁 Ends: ${_timeLimit.toLocal().toString().split(' ')[0]}'),
-                    Text('👥 ${_selectedUserIds.length + 1} participants (including you)'),
-                    if (_wager.isNotEmpty) Text('🎯 Wager: $_wager'),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.all(16),
-                    backgroundColor: Colors.blue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: _title.isEmpty || _selectedUserIds.isEmpty
-                      ? null
-                      : () {
-                          final input = {
-                            "title": _title,
-                            "sport": _sport,
-                            "type": _type,
-                            "startDate": _startDate.toUtc().toIso8601String(),
-                            "timeLimit": _timeLimit.toUtc().toIso8601String(),
-                            "wager": _wager,
-                            "participantIds": _selectedUserIds,
-                          };
-                          runMutation({"input": input});
-                        },
-                  child: result?.isLoading ?? false
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Create Challenge',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _endDate != null
+                              ? DateFormat('MMM dd, yyyy').format(_endDate!)
+                              : 'Select date',
                         ),
+                        const Icon(Icons.calendar_today),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: _sport,
+            decoration: const InputDecoration(
+              labelText: 'Sport Category',
+              border: OutlineInputBorder(),
+            ),
+            items: ['workout', 'running', 'cycling', 'swimming', 'yoga', 'other']
+                .map((sport) => DropdownMenuItem(
+                      value: sport,
+                      child: Text(sport[0].toUpperCase() + sport.substring(1)),
+                    ))
+                .toList(),
+            onChanged: (value) {
+              if (value != null) setState(() => _sport = value);
+            },
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: _type,
+            decoration: const InputDecoration(
+              labelText: 'Challenge Type',
+              border: OutlineInputBorder(),
+            ),
+            items: ['competitive', 'collaborative', 'personal']
+                .map((type) => DropdownMenuItem(
+                      value: type,
+                      child: Text(type[0].toUpperCase() + type.substring(1)),
+                    ))
+                .toList(),
+            onChanged: (value) {
+              if (value != null) setState(() => _type = value);
+            },
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _wagerController,
+            decoration: const InputDecoration(
+              labelText: 'Wager (optional)',
+              hintText: 'e.g., Loser buys coffee ☕',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.local_offer),
+            ),
+          ),
+        ],
+      ),
     );
   }
+  
+  Widget _buildRulesStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Challenge Rules',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 24),
+          ChallengeRulesEditor(
+            rules: _rules,
+            onRulesChanged: (rules) {
+              setState(() {
+                _rules = rules;
+              });
+            },
+          ),
+          const SizedBox(height: 24),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Minimum Weekly Activities',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Slider(
+                          value: _minWeeklyActivities.toDouble(),
+                          min: 1,
+                          max: 7,
+                          divisions: 6,
+                          label: _minWeeklyActivities.toString(),
+                          onChanged: (value) {
+                            setState(() {
+                              _minWeeklyActivities = value.round();
+                            });
+                          },
+                        ),
+                      ),
+                      SizedBox(
+                        width: 50,
+                        child: Text(
+                          '$_minWeeklyActivities/week',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Creator Rest Days per Week',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Slider(
+                          value: _creatorRestDays.toDouble(),
+                          min: 0,
+                          max: 3,
+                          divisions: 3,
+                          label: _creatorRestDays.toString(),
+                          onChanged: (value) {
+                            setState(() {
+                              _creatorRestDays = value.round();
+                            });
+                          },
+                        ),
+                      ),
+                      SizedBox(
+                        width: 50,
+                        child: Text(
+                          '$_creatorRestDays days',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: SwitchListTile(
+              title: const Text('Require Daily Photo'),
+              subtitle: const Text('Participants must submit photo proof'),
+              value: _requireDailyPhoto,
+              onChanged: (value) {
+                setState(() {
+                  _requireDailyPhoto = value;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildRequirementsStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Requirements & Restrictions',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 24),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Minimum Points to Join',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _minPointsController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      hintText: '0',
+                      helperText: 'Leave empty for no minimum',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _minPointsToJoin = int.tryParse(value) ?? 0;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Allowed Activity Types',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      'Running',
+                      'Cycling',
+                      'Swimming',
+                      'Gym',
+                      'Yoga',
+                      'Walking',
+                      'Other'
+                    ].map((activity) {
+                      final isSelected = _allowedActivities.contains(activity);
+                      return FilterChip(
+                        label: Text(activity),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _allowedActivities.add(activity);
+                            } else {
+                              _allowedActivities.remove(activity);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: SwitchListTile(
+              title: const Text('Allow Rest Days'),
+              subtitle: const Text('Participants can mark days as rest days'),
+              value: _allowRestDays,
+              onChanged: (value) {
+                setState(() {
+                  _allowRestDays = value;
+                });
+              },
+            ),
+          ),
+          if (_allowRestDays) ...[
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Rest Days per Week',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _restDaysController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        hintText: '2',
+                        helperText: 'Maximum rest days allowed per week',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Milestones',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_circle),
+                onPressed: _showMilestoneDialog,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_milestones.isEmpty)
+            Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.flag_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No milestones added yet',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: _showMilestoneDialog,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Milestone'),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...List.generate(_milestones.length, (index) {
+              final milestone = _milestones[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    child: Text('${index + 1}'),
+                  ),
+                  title: Text(milestone.name),
+                  subtitle: Text(
+                    '${milestone.type} - Target: ${milestone.target}',
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () {
+                      setState(() {
+                        _milestones.removeAt(index);
+                      });
+                    },
+                  ),
+                  onTap: () => _showMilestoneDialog(index: index),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildReviewStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Review Your Challenge',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 24),
+          _buildReviewCard(
+            'Basic Information',
+            [
+              _buildReviewItem('Name', _nameController.text),
+              _buildReviewItem('Description', _descriptionController.text),
+              _buildReviewItem(
+                'Duration',
+                _startDate != null && _endDate != null
+                    ? '${DateFormat('MMM dd').format(_startDate!)} - ${DateFormat('MMM dd, yyyy').format(_endDate!)}'
+                    : 'Not set',
+              ),
+              _buildReviewItem('Sport', _sport),
+              _buildReviewItem('Type', _type),
+              if (_wagerController.text.isNotEmpty)
+                _buildReviewItem('Wager', _wagerController.text),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildReviewCard(
+            'Rules',
+            _rules.isNotEmpty
+                ? _rules.map((rule) => _buildReviewItem('', '• $rule')).toList()
+                : [_buildReviewItem('', 'No rules added')],
+          ),
+          const SizedBox(height: 16),
+          _buildReviewCard(
+            'Requirements',
+            [
+              _buildReviewItem(
+                'Minimum Points',
+                _minPointsController.text.isEmpty
+                    ? 'None'
+                    : _minPointsController.text,
+              ),
+              _buildReviewItem(
+                'Weekly Activities',
+                '$_minWeeklyActivities per week',
+              ),
+              _buildReviewItem(
+                'Activity Types',
+                _allowedActivities.isEmpty
+                    ? 'All types allowed'
+                    : _allowedActivities.join(', '),
+              ),
+              _buildReviewItem(
+                'Rest Days',
+                _allowRestDays
+                    ? '${_restDaysController.text} per week'
+                    : 'Not allowed',
+              ),
+              _buildReviewItem(
+                'Daily Photo',
+                _requireDailyPhoto ? 'Required' : 'Not required',
+              ),
+              _buildReviewItem(
+                'Creator Rest Days',
+                '$_creatorRestDays per week',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildReviewCard(
+            'Milestones',
+            _milestones.isNotEmpty
+                ? _milestones
+                    .map((m) => _buildReviewItem(
+                          m.name,
+                          '${m.type} - Target: ${m.target}',
+                        ))
+                    .toList()
+                : [_buildReviewItem('', 'No milestones added')],
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildNavigationButtons() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            offset: const Offset(0, -2),
+            blurRadius: 4,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          if (_currentStep > 0)
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _previousStep,
+                child: const Text('Back'),
+              ),
+            ),
+          if (_currentStep > 0) const SizedBox(width: 16),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _canProceed() ? _nextStep : null,
+              child: Text(_currentStep < 4 ? 'Next' : 'Create Challenge'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildReviewCard(String title, List<Widget> items) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...items,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReviewItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (label.isNotEmpty) ...[
+            Text(
+              '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ],
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+  
+void _applyTemplate(ChallengeTemplate template) {
+  setState(() {
+    _nameController.text = template.name;  // 'name' maps to 'title' in the form
+    _descriptionController.text = template.description;
+    _rules = List.from(template.defaultRules);  // 'defaultRules' maps to 'rules'
+    _allowedActivities = List.from(template.activityTypes);  // 'activityTypes' maps to 'allowedActivities'
+    _milestones.clear();
+    _milestones.addAll(template.suggestedMilestones);
+    
+    // Add these new mappings:
+    _minWeeklyActivities = template.minWeeklyActivities;
+    _sport = template.sport;
+    _type = template.type;
+    
+    // Set duration based on template
+    _endDate = _startDate?.add(Duration(days: template.suggestedDuration));
+    
+    if (template.suggestedRestDaysPerWeek != null) {
+      _restDaysController.text = template.suggestedRestDaysPerWeek.toString();
+      _allowRestDays = true;
+    }
+  });
+}
+  
+  void _selectDate(bool isStartDate) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: isStartDate
+          ? (_startDate ?? DateTime.now())
+          : (_endDate ?? DateTime.now().add(const Duration(days: 30))),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    
+    if (picked != null) {
+      setState(() {
+        if (isStartDate) {
+          _startDate = picked;
+          // Auto-set end date to 30 days later if not set
+          if (_endDate == null) {
+            _endDate = picked.add(const Duration(days: 30));
+          }
+        } else {
+          _endDate = picked;
+        }
+      });
+    }
+  }
+  
+  void _showMilestoneDialog({int? index}) {
+    final isEditing = index != null;
+    final milestone = isEditing ? _milestones[index] : null;
+    
+    final nameController = TextEditingController(text: milestone?.name ?? '');
+    final targetController = TextEditingController(
+      text: milestone?.target.toString() ?? '',
+    );
+    final descriptionController = TextEditingController(text: milestone?.description ?? '');
+    String type = milestone?.type ?? 'points';
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEditing ? 'Edit Milestone' : 'Add Milestone'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Milestone Name',
+                  hintText: 'e.g., First Week Complete',
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description (optional)',
+                  hintText: 'Describe the milestone',
+                ),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: type,
+                decoration: const InputDecoration(
+                  labelText: 'Type',
+                ),
+                items: ['points', 'streak', 'activities', 'custom']
+                    .map((t) => DropdownMenuItem(
+                          value: t,
+                          child: Text(t[0].toUpperCase() + t.substring(1)),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    type = value;
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: targetController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Target Value',
+                  hintText: 'e.g., 100',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (nameController.text.isNotEmpty &&
+                  targetController.text.isNotEmpty) {
+                setState(() {
+                  final newMilestone = ChallengeMilestone(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    name: nameController.text,
+                    type: type,
+                    target: int.tryParse(targetController.text) ?? 0,
+                    description: descriptionController.text.isEmpty 
+                        ? null 
+                        : descriptionController.text,
+                  );
+                  
+                  if (isEditing) {
+                    _milestones[index] = newMilestone;
+                  } else {
+                    _milestones.add(newMilestone);
+                  }
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  bool _canProceed() {
+    switch (_currentStep) {
+      case 0: return true; // Template selection
+      case 1: return _nameController.text.isNotEmpty;
+      case 2: return _rules.isNotEmpty;
+      case 3: return true; // Requirements are optional
+      case 4: return true; // Review
+      default: return false;
+    }
+  }
+  
+  void _nextStep() {
+    if (_currentStep < 4) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      setState(() => _currentStep++);
+    } else {
+      _createChallenge();
+    }
+  }
+  
+  void _previousStep() {
+    if (_currentStep > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      setState(() => _currentStep--);
+    }
+  }
+  
+// In the _createChallenge method, update the input object structure:
+Future<void> _createChallenge() async {
+  final client = GraphQLProvider.of(context).value;
+  
+  // Prepare the input with correct field names
+  final input = {
+    'title': _nameController.text,
+    'description': _descriptionController.text,
+    'rules': _rules.join('\n'), // Convert array to string with newlines
+    'sport': _sport,
+    'type': _type,
+    'startDate': _startDate?.toIso8601String(),
+    'timeLimit': _endDate?.toIso8601String(), // Backend expects 'timeLimit'
+    'minWeeklyActivities': _minWeeklyActivities,
+    'minPointsToJoin': _minPointsToJoin,
+    'creatorRestDays': _creatorRestDays,
+    'requireDailyPhoto': _requireDailyPhoto,
+    'allowedActivities': _allowedActivities,
+    'wager': _wagerController.text.isEmpty ? null : _wagerController.text,
+    'template': _selectedTemplate?.id, // Backend expects 'template', not 'templateId'
+    'milestones': _milestones.map((m) => {
+      'title': m.name, // Backend expects 'title'
+      'description': m.description,
+      'type': m.type,
+      'targetValue': m.target, // Backend expects 'targetValue'
+      'icon': '🎯', // Add default icon
+      'reward': null, // Optional field
+    }).toList(),
+    'participantIds': _selectedUserIds,
+    'enableReminders': true, // Add this field
+  };
+  
+  try {
+    final result = await client.mutate(
+      MutationOptions(
+        document: gql(ChallengeMutations.createChallenge),
+        variables: {'input': input},
+      ),
+    );
+    
+    if (!result.hasException && mounted) {
+      // Refresh providers
+      context.read<ChallengeProvider>().fetchChallenges();
+      
+      Navigator.of(context).pop(true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🎉 Challenge created successfully!')),
+      );
+    } else if (result.hasException) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${result.exception.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+}
 }
