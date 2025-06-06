@@ -24,15 +24,39 @@ class CreateChallengeForm extends StatefulWidget {
 }
 
 class _CreateChallengeFormState extends State<CreateChallengeForm> {
-  final String createChallengeMutation = """
-  mutation CreateChallenge(\$input: CreateChallengeInput!) {
-    createChallenge(input: \$input) {
-      id
-      title
-      status
+  static const String createChallengeMutation = """
+    mutation CreateChallenge(\$input: CreateChallengeInput!) {
+      createChallenge(input: \$input) {
+        id
+        title
+        description
+        status
+        sport
+        type
+        startDate
+        timeLimit
+        milestones {
+          id
+          title
+          description
+          type
+          targetValue
+          icon
+        }
+        participants {
+          id
+          user {
+            id
+            displayName
+            avatarUrl
+          }
+          role
+          status
+          restDays
+        }
+      }
     }
-  }
-""";
+  """;
 
   String _title = '';
   String _sport = 'running';

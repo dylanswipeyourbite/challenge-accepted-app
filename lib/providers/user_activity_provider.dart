@@ -22,12 +22,17 @@ class UserActivityProvider extends ChangeNotifier {
   bool _isLoadingTimeline = false;
   String? _error;
   
-  // Getters with typed models
+  // Getters with typed models - properly accessing UserStats fields
   UserStats? get userStats => _userStats;
   int get currentStreak => _userStats?.currentStreak ?? 0;
   int get totalPoints => _userStats?.totalPoints ?? 0;
   int get completedChallenges => _userStats?.completedChallenges ?? 0;
   ActiveChallengeInfo? get activeChallenge => _userStats?.activeChallenge;
+  
+  // Weekly stats from UserStats model
+  int get weeklyActivityDays => _userStats?.weeklyActivityDays ?? 0;
+  int get weeklyRestDays => _userStats?.weeklyRestDays ?? 0;
+  int get weeklyPoints => _userStats?.weeklyPoints ?? 0;
   
   List<Media> get timelineMedia => _timelineMedia;
   bool get isLoading => _isLoadingStats || _isLoadingTimeline;
@@ -41,17 +46,12 @@ class UserActivityProvider extends ChangeNotifier {
   int get remainingRestDays => activeChallenge?.remainingRestDays ?? 0;
   bool get canTakeRestDay => activeChallenge?.canTakeRestDay ?? false;
   
-  // Weekly stats (keeping backward compatibility)
-  int get weeklyActivityDays => 0; // TODO: Add to UserStats model
-  int get weeklyRestDays => activeChallenge?.usedRestDaysThisWeek ?? 0;
-  int get weeklyPoints => 0; // TODO: Add to UserStats model
-  
-  void setClient(GraphQLClient client) {
+ void setClient(GraphQLClient client) {
     _client = client;
   }
   
   // Fetch user stats
-  Future<void> fetchUserStats() async {
+Future<void> fetchUserStats() async {
     if (_client == null) {
       print('UserActivityProvider: GraphQL client not initialized');
       _error = 'Client not initialized';
@@ -88,9 +88,7 @@ class UserActivityProvider extends ChangeNotifier {
       _isLoadingStats = false;
       notifyListeners();
     }
-  }
-  
-  // Fetch timeline media
+  }  // Fetch timeline media
   Future<void> fetchTimelineMedia() async {
     if (_client == null) return;
     
@@ -128,18 +126,23 @@ class UserActivityProvider extends ChangeNotifier {
     }
   }
   
-  // Update stats after logging activity
+// Update stats after logging activity
   void updateAfterActivityLog({
     required int pointsEarned,
     required int newStreak,
     required String challengeId,
   }) {
     if (_userStats != null) {
-      // Create updated stats
+      // Create updated stats with weekly points increment
       _userStats = UserStats(
         currentStreak: newStreak,
         totalPoints: _userStats!.totalPoints + pointsEarned,
         completedChallenges: _userStats!.completedChallenges,
+        weeklyActivityDays: _userStats!.weeklyActivityDays,
+        weeklyRestDays: pointsEarned == 5 
+            ? _userStats!.weeklyRestDays + 1 
+            : _userStats!.weeklyRestDays,
+        weeklyPoints: _userStats!.weeklyPoints + pointsEarned,
         activeChallenge: _userStats!.activeChallenge != null &&
                 _userStats!.activeChallenge!.id == challengeId
             ? ActiveChallengeInfo(

@@ -1,9 +1,11 @@
+import 'package:challengeaccepted/providers/challenge_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:challengeaccepted/models/challenge_template.dart';
 import 'package:challengeaccepted/models/challenge_milestone.dart';
 import 'package:challengeaccepted/widgets/forms/challenge_rules_editor.dart';
+import 'package:provider/provider.dart';
 
 class CreateChallengePageV2 extends StatefulWidget {
   const CreateChallengePageV2({super.key});
@@ -956,59 +958,69 @@ void _applyTemplate(ChallengeTemplate template) {
     }
   }
   
-  Future<void> _createChallenge() async {
-    final client = GraphQLProvider.of(context).value;
+// In the _createChallenge method, update the input object structure:
+Future<void> _createChallenge() async {
+  final client = GraphQLProvider.of(context).value;
+  
+  // Prepare the input with correct field names
+  final input = {
+    'title': _nameController.text,
+    'description': _descriptionController.text,
+    'rules': _rules.join('\n'), // Convert array to string with newlines
+    'sport': _sport,
+    'type': _type,
+    'startDate': _startDate?.toIso8601String(),
+    'timeLimit': _endDate?.toIso8601String(), // Backend expects 'timeLimit'
+    'minWeeklyActivities': _minWeeklyActivities,
+    'minPointsToJoin': _minPointsToJoin,
+    'creatorRestDays': _creatorRestDays,
+    'requireDailyPhoto': _requireDailyPhoto,
+    'allowedActivities': _allowedActivities,
+    'wager': _wagerController.text.isEmpty ? null : _wagerController.text,
+    'template': _selectedTemplate?.id, // Backend expects 'template', not 'templateId'
+    'milestones': _milestones.map((m) => {
+      'title': m.name, // Backend expects 'title'
+      'description': m.description,
+      'type': m.type,
+      'targetValue': m.target, // Backend expects 'targetValue'
+      'icon': '🎯', // Add default icon
+      'reward': null, // Optional field
+    }).toList(),
+    'participantIds': _selectedUserIds,
+    'enableReminders': true, // Add this field
+  };
+  
+  try {
+    final result = await client.mutate(
+      MutationOptions(
+        document: gql(createChallengeMutation),
+        variables: {'input': input},
+      ),
+    );
     
-    // In _createChallenge method, ensure the input object uses correct field names:
-    final input = {
-      'title': _nameController.text,  // Not 'name'
-      'description': _descriptionController.text,
-      'rules': _rules,  // List<String>
-      'sport': _sport,
-      'type': _type,
-      'startDate': _startDate?.toIso8601String(),
-      'endDate': _endDate?.toIso8601String(),  // Change from 'timeLimit'
-      'minWeeklyActivities': _minWeeklyActivities,
-      'minPointsToJoin': _minPointsToJoin,
-      'creatorRestDays': _creatorRestDays,
-      'requireDailyPhoto': _requireDailyPhoto,
-      'allowedActivities': _allowedActivities,  // List<String>
-      'allowRestDays': _allowRestDays,
-      'restDaysPerWeek': int.tryParse(_restDaysController.text) ?? 2,
-      'wager': _wagerController.text,
-      'templateId': _selectedTemplate?.id,  // Change from 'template'
-      'milestones': _milestones.map((m) => m.toMap()).toList(),
-      'participantIds': _selectedUserIds,  // Add this if not present
-    };
-    
-    try {
-      final result = await client.mutate(
-        MutationOptions(
-          document: gql(createChallengeMutation),
-          variables: {'input': input},
-        ),
-      );
+    if (!result.hasException && mounted) {
+      // Refresh providers
+      context.read<ChallengeProvider>().fetchChallenges();
       
-      if (!result.hasException && mounted) {
-        Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('🎉 Challenge created successfully!')),
-        );
-      } else if (result.hasException) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${result.exception.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
+      Navigator.of(context).pop(true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🎉 Challenge created successfully!')),
+      );
+    } else if (result.hasException) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e'),
+          content: Text('Error: ${result.exception.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
 }
