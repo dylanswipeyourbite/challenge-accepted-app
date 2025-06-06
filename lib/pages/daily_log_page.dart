@@ -1,5 +1,4 @@
 // lib/pages/daily_log_page.dart
-import 'package:challengeaccepted/models/participant.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:challengeaccepted/providers/challenge_provider.dart';
@@ -105,89 +104,6 @@ class ProviderAwareDailyLogPage extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-// Keep this for backward compatibility or direct navigation with props
-class IntegratedDailyLogPage extends StatelessWidget {
-  final String challengeId;
-  final String challengeTitle;
-  final Participant userParticipant;
-  final bool isMultiChallenge;
-  final String? challengeProgress;
-  final VoidCallback? onComplete;
-
-  const IntegratedDailyLogPage({
-    super.key,
-    required this.challengeId,
-    required this.challengeTitle,
-    required this.userParticipant,
-    this.isMultiChallenge = false,
-    this.challengeProgress,
-    this.onComplete,
-  });
-
-  int get allowedRestDays => userParticipant.restDays ?? 1;
-  int get usedRestDays => userParticipant.weeklyRestDaysUsed;
-  int get currentStreak => userParticipant.dailyStreak;
-
-  void _handleCompletion(BuildContext context) async {
-    // Store providers before any navigation
-    final challengeProvider = context.read<ChallengeProvider>();
-    final userActivityProvider = context.read<UserActivityProvider>();
-    
-    // Return true to indicate successful logging
-    Navigator.of(context).pop(true);
-    
-    // If there's an external onComplete callback, call it
-    onComplete?.call();
-    
-    // Refresh providers after navigation is complete
-    await Future.delayed(const Duration(milliseconds: 100));
-    await Future.wait([
-      challengeProvider.refresh(),
-      userActivityProvider.refresh(),
-    ]);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Log Today - $challengeTitle'),
-            if (isMultiChallenge && challengeProgress != null)
-              Text(
-                'Challenge $challengeProgress',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
-              ),
-          ],
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            StreakDisplayCard(currentStreak: currentStreak),
-            const SizedBox(height: 24),
-            RestDayInfoCard(
-              usedRestDays: usedRestDays,
-              allowedRestDays: allowedRestDays,
-            ),
-            const SizedBox(height: 24),
-            RefactoredDailyLogForm(
-              challengeId: challengeId,
-              challengeTitle: challengeTitle,
-              canTakeRestDay: usedRestDays < allowedRestDays,
-              onComplete: () => _handleCompletion(context),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
