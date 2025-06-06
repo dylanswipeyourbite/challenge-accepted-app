@@ -1,4 +1,5 @@
 // lib/pages/challenge_chat_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:challengeaccepted/graphql/queries/chat_queries.dart';
@@ -7,7 +8,8 @@ import 'package:challengeaccepted/graphql/subscriptions/chat_subscriptions.dart'
 import 'package:challengeaccepted/models/chat_message.dart';
 import 'package:challengeaccepted/widgets/chat/message_bubble.dart';
 import 'package:challengeaccepted/widgets/chat/message_input.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:challengeaccepted/widgets/common/loading_indicator.dart';
+import 'package:challengeaccepted/widgets/common/error_message.dart';
 
 class ChallengeChatPage extends StatefulWidget {
   final String challengeId;
@@ -32,57 +34,58 @@ class _ChallengeChatPageState extends State<ChallengeChatPage> {
     super.dispose();
   }
   
-  Future<void> _sendMessage(GraphQLClient client) async {
+  void _scrollToBottom() {
+    // Check if the scroll controller is attached before animating
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+  
+  Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
     
     _messageController.clear();
     
-    try {
-      await client.mutate(
-        MutationOptions(
-          document: gql(ChatMutations.sendMessage),
-          variables: {
-            'input': {
-              'challengeId': widget.challengeId,
-              'text': text,
-              'type': 'text',
-            }
+    final client = GraphQLProvider.of(context).value;
+    
+    await client.mutate(
+      MutationOptions(
+        document: gql(ChatMutations.sendMessage),
+        variables: {
+          'input': {
+            'challengeId': widget.challengeId,
+            'text': text,
+            'type': 'text',
           },
-        ),
-      );
-      
-      // Scroll to bottom
-      _scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send message: $e')),
-      );
-    }
+        },
+      ),
+    );
+    
+    // Delay scroll to ensure the new message is rendered
+    Future.delayed(const Duration(milliseconds: 100), () {
+      _scrollToBottom();
+    });
   }
   
-  Future<void> _addReaction(String messageId, String emoji, GraphQLClient client) async {
-    try {
-      await client.mutate(
-        MutationOptions(
-          document: gql(ChatMutations.addReaction),
-          variables: {
-            'input': {
-              'messageId': messageId,
-              'emoji': emoji,
-            }
+  void _handleReaction(String messageId, String emoji) async {
+    final client = GraphQLProvider.of(context).value;
+    
+    await client.mutate(
+      MutationOptions(
+        document: gql(ChatMutations.addReaction),
+        variables: {
+          'input': {
+            'messageId': messageId,
+            'emoji': emoji,
           },
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add reaction: $e')),
-      );
-    }
+        },
+      ),
+    );
   }
   
   void _showAttachmentOptions() {
@@ -97,7 +100,7 @@ class _ChallengeChatPageState extends State<ChallengeChatPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Send',
+              'Share',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -105,15 +108,23 @@ class _ChallengeChatPageState extends State<ChallengeChatPage> {
             ),
             const SizedBox(height: 24),
             ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Photo/Video'),
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Camera'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implement photo/video sharing
+                // TODO: Implement camera capture
               },
             ),
             ListTile(
-              leading: const Icon(Icons.gif_box),
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Implement gallery picker
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.gif),
               title: const Text('GIF'),
               onTap: () {
                 Navigator.pop(context);
@@ -134,9 +145,10 @@ class _ChallengeChatPageState extends State<ChallengeChatPage> {
     );
   }
   
-  void _sendCelebration() {
+  void _sendCelebration() async {
     final client = GraphQLProvider.of(context).value;
-    client.mutate(
+    
+    await client.mutate(
       MutationOptions(
         document: gql(ChatMutations.sendMessage),
         variables: {
@@ -144,7 +156,7 @@ class _ChallengeChatPageState extends State<ChallengeChatPage> {
             'challengeId': widget.challengeId,
             'text': '🎉 Let\'s celebrate! 🎉',
             'type': 'celebration',
-          }
+          },
         },
       ),
     );
@@ -152,8 +164,6 @@ class _ChallengeChatPageState extends State<ChallengeChatPage> {
   
   @override
   Widget build(BuildContext context) {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Challenge Chat'),
@@ -161,115 +171,83 @@ class _ChallengeChatPageState extends State<ChallengeChatPage> {
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {
-              // TODO: Show chat info/participants
+              // TODO: Show challenge info
             },
           ),
         ],
       ),
       body: Column(
         children: [
-          // Messages list with subscription
           Expanded(
-            child: Subscription(
-              options: SubscriptionOptions(
-                document: gql(ChatSubscriptions.onChatMessage),
-                variables: {'challengeId': widget.challengeId},
+            child: Query(
+              options: QueryOptions(
+                document: gql(ChatQueries.getChatMessages),
+                variables: {
+                  'challengeId': widget.challengeId,
+                  'limit': 50,
+                },
+                fetchPolicy: FetchPolicy.cacheAndNetwork,
               ),
-              builder: (result) {
-                return Query(
-                  options: QueryOptions(
-                    document: gql(ChatQueries.getChatMessages),
-                    variables: {
-                      'challengeId': widget.challengeId,
-                      'limit': 50,
-                    },
-                    fetchPolicy: FetchPolicy.cacheAndNetwork,
+              builder: (result, {refetch, fetchMore}) {
+                if (result.isLoading && result.data == null) {
+                  return const LoadingIndicator();
+                }
+                
+                if (result.hasException) {
+                  return ErrorMessage(
+                    message: 'Failed to load messages',
+                    error: result.exception.toString(),
+                    onRetry: refetch,
+                  );
+                }
+                
+                final messagesData = result.data?['chatMessages'] ?? [];
+                final messages = messagesData
+                    .map((json) => ChatMessage.fromJson(json))
+                    .toList()
+                    .reversed
+                    .toList();
+                
+                return Subscription(
+                  options: SubscriptionOptions(
+                    document: gql(ChatSubscriptions.onChatMessage),
+                    variables: {'challengeId': widget.challengeId},
                   ),
-                  builder: (queryResult, {fetchMore, refetch}) {
-                    if (queryResult.isLoading && queryResult.data == null) {
-                      return const Center(child: CircularProgressIndicator());
+                  builder: (subscriptionResult) {
+                    if (subscriptionResult.hasException) {
+                      print('Subscription error: ${subscriptionResult.exception}');
                     }
                     
-                    final messages = (queryResult.data?['chatMessages'] ?? [])
-                        .map<ChatMessage>((json) => ChatMessage.fromJson(json))
-                        .toList();
+                    if (subscriptionResult.isLoading) {
+                      return _buildMessageList(messages);
+                    }
                     
-                    if (messages.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.chat_bubble_outline,
-                              size: 64,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No messages yet',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Start the conversation!',
-                              style: TextStyle(
-                                color: Colors.grey.shade500,
-                              ),
-                            ),
-                          ],
-                        ),
+                    // Handle new message from subscription
+                    if (subscriptionResult.data != null) {
+                      final newMessage = ChatMessage.fromJson(
+                        subscriptionResult.data!['chatMessageAdded'],
                       );
+                      
+                      // Add to messages if not already present
+                      if (!messages.any((m) => m.id == newMessage.id)) {
+                        messages.add(newMessage);
+                        
+                        // Scroll to bottom after new message
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _scrollToBottom();
+                        });
+                      }
                     }
                     
-                    return ListView.builder(
-                      controller: _scrollController,
-                      reverse: true,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: messages.length,
-                      itemBuilder: (context, index) {
-                        final message = messages[index];
-                        final isCurrentUser = message.user.id == currentUser?.uid;
-                        
-                        // Show date divider if needed
-                        bool showDateDivider = false;
-                        if (index == messages.length - 1 ||
-                            !_isSameDay(
-                              messages[index].createdAt,
-                              messages[index + 1].createdAt,
-                            )) {
-                          showDateDivider = true;
-                        }
-                        
-                        return Column(
-                          children: [
-                            if (showDateDivider)
-                              _DateDivider(date: message.createdAt),
-                            MessageBubble(
-                              message: message,
-                              isCurrentUser: isCurrentUser,
-                              onReaction: (emoji) => _addReaction(
-                                message.id,
-                                emoji,
-                                GraphQLProvider.of(context).value,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    );
+                    return _buildMessageList(messages);
                   },
                 );
               },
             ),
           ),
-          
-          // Message input
           MessageInput(
             controller: _messageController,
-            onSend: () => _sendMessage(GraphQLProvider.of(context).value),
+            onSend: _sendMessage,
             onAttachment: _showAttachmentOptions,
           ),
         ],
@@ -277,8 +255,76 @@ class _ChallengeChatPageState extends State<ChallengeChatPage> {
     );
   }
   
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
+  Widget _buildMessageList(List<ChatMessage> messages) {
+    if (messages.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No messages yet',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Start the conversation!',
+              style: TextStyle(
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(16),
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final message = messages[index];
+        final previousMessage = index > 0 ? messages[index - 1] : null;
+        final showDateDivider = _shouldShowDateDivider(
+          previousMessage?.createdAt,
+          message.createdAt,
+        );
+        
+        return Column(
+          children: [
+            if (showDateDivider)
+              _DateDivider(date: message.createdAt),
+            MessageBubble(
+              message: message,
+              isCurrentUser: _isCurrentUser(message.user.id),
+              onReaction: (emoji) => _handleReaction(message.id, emoji),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  bool _isCurrentUser(String userId) {
+    // TODO: Get current user ID from auth context
+    // For now, return false
+    return false;
+  }
+  
+  bool _shouldShowDateDivider(DateTime? previousDate, DateTime currentDate) {
+    if (previousDate == null) return true;
+    
+    return previousDate.day != currentDate.day ||
+           previousDate.month != currentDate.month ||
+           previousDate.year != currentDate.year;
   }
 }
 
@@ -290,11 +336,14 @@ class _DateDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final isToday = _isSameDay(date, now);
-    final isYesterday = _isSameDay(
-      date,
-      now.subtract(const Duration(days: 1)),
-    );
+    final isToday = date.day == now.day && 
+                    date.month == now.month && 
+                    date.year == now.year;
+    
+    final yesterday = now.subtract(const Duration(days: 1));
+    final isYesterday = date.day == yesterday.day && 
+                        date.month == yesterday.month && 
+                        date.year == yesterday.year;
     
     String dateText;
     if (isToday) {
@@ -317,7 +366,6 @@ class _DateDivider extends StatelessWidget {
               style: TextStyle(
                 color: Colors.grey.shade600,
                 fontSize: 12,
-                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -325,9 +373,5 @@ class _DateDivider extends StatelessWidget {
         ],
       ),
     );
-  }
-  
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 }

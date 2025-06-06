@@ -84,7 +84,7 @@ class ChallengeTemplate {
     description: 'Build a consistent fitness habit in 30 days',
     category: 'General Fitness',
     icon: Icons.fitness_center,
-    sport: 'workout',  // Add this
+    sport: 'gym',  // Add this
     type: 'competitive',  // Add this
     minWeeklyActivities: 5,  // Add this
     defaultRules: [
@@ -127,7 +127,7 @@ class ChallengeTemplate {
     description: 'Sustainable weight loss through consistent exercise',
     category: 'Health',
     icon: Icons.monitor_weight,
-    sport: 'workout',  // Add this
+    sport: 'gym',  // Add this
     type: 'collaborative',  // Add this
     minWeeklyActivities: 5,  // Add this
     defaultRules: [

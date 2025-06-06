@@ -354,8 +354,8 @@ class _ProgressTab extends StatelessWidget {
           ...activityDistribution.map((activity) => _ActivityBar(
             type: activity['type'] ?? '',
             count: activity['count'] ?? 0,
-            percentage: activity['percentage'] ?? 0.0,
-          )).toList(),
+            percentage: (activity['percentage'] ?? 0).toDouble(), // Convert to double
+          )),
         ],
       ),
     );
@@ -494,7 +494,7 @@ class _ActivityBar extends StatelessWidget {
         return Colors.orange;
       case 'cycling':
         return Colors.blue;
-      case 'workout':
+      case 'gym':
         return Colors.purple;
       default:
         return Colors.green;

@@ -30,7 +30,7 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
   // Form data with proper types
   ChallengeTemplate? _selectedTemplate;
   List<String> _rules = [];
-  String _sport = 'workout';
+  String _sport = 'gym';
   String _type = 'competitive';
   DateTime? _startDate = DateTime.now().add(const Duration(days: 1));
   DateTime? _endDate = DateTime.now().add(const Duration(days: 30));

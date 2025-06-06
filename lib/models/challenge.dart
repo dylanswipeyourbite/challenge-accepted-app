@@ -41,7 +41,7 @@ class Challenge {
     return Challenge(
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
-      sport: SportType.fromString(json['sport'] as String? ?? 'workout'),
+      sport: SportType.fromString(json['sport'] as String? ?? 'gym'),
       type: ChallengeType.fromString(json['type'] as String? ?? 'competitive'),
       startDate: json['startDate'] != null 
           ? DateTime.parse(json['startDate'] as String)

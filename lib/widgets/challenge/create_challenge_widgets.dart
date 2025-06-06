@@ -122,7 +122,7 @@ class SportSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sports = {
-      'workout': {'icon': Icons.fitness_center, 'label': 'Workout'},
+      'gym': {'icon': Icons.fitness_center, 'label': 'Gym'},
       'running': {'icon': Icons.directions_run, 'label': 'Running'},
       'cycling': {'icon': Icons.directions_bike, 'label': 'Cycling'},
       'swimming': {'icon': Icons.pool, 'label': 'Swimming'},
